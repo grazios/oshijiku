@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>推し軸 - 推しを2次元MAPに置いて盛り上がろう</title>
   <meta name="description" content="推しを2つの軸で分類して2次元MAPに配置。作ったMAPは共有・Forkできる！" />
   <meta property="og:title" content="推し軸" />
@@ -11,84 +11,115 @@
   <meta property="og:url" content="https://oshijiku.com" />
   <meta name="twitter:card" content="summary" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📌</text></svg>" />
-  <link rel="stylesheet" href="style.css?v=20260222g" />
+  <link rel="stylesheet" href="style.css?v=20260222r" />
 </head>
 <body>
-  <header>
+  <header role="banner">
     <h1>推し軸</h1>
     <p>推しを2次元MAPに置いて、公開/Forkで盛り上がる</p>
   </header>
 
   <main>
-    <!-- MAP: full width, prominent -->
-    <section class="panel">
+    <!-- ===== MAP Section ===== -->
+    <section class="panel" aria-label="推し軸マップ">
       <h2>MAP</h2>
-      <div id="mapWrap">
-        <svg id="map" viewBox="0 0 600 600"></svg>
+      <div id="mapWrap" role="img" aria-label="推しの2次元マップ">
+        <svg id="map" viewBox="0 0 600 600" aria-hidden="true"></svg>
       </div>
       <p class="hint">💡 ドラッグで推しの位置を調整できるよ</p>
-      <div class="actions">
-        <button id="shareBtn">共有URLを作る</button>
-        <button id="copyBtn">URLをコピー</button>
-        <button id="forkBtn">この軸をFork</button>
+      <div class="actions actions--three">
+        <button id="shareBtn" aria-label="共有URLを作成">共有URLを作る</button>
+        <button id="copyBtn" aria-label="共有URLをクリップボードにコピー">URLをコピー</button>
+        <button id="forkBtn" aria-label="この軸をForkして編集">この軸をFork</button>
       </div>
-      <textarea id="shareUrl" readonly placeholder="共有URLがここに出る"></textarea>
-      <p class="hint warn">現在の共有方式: URL埋め込み（DB保存なし）</p>
+      <textarea id="shareUrl" readonly placeholder="共有URLがここに出る" aria-label="共有URL"></textarea>
+      <p class="hint hint--warn">現在の共有方式: URL埋め込み（DB保存なし）</p>
       <p class="hint">URL共有を選ぶと、このリンク経由でForkしやすくなるよ。</p>
     </section>
 
-    <!-- Controls: side by side below MAP -->
+    <!-- ===== Controls Grid ===== -->
     <div class="controls">
-      <section class="panel">
+      <!-- Axis Settings -->
+      <section class="panel" aria-label="軸設定">
         <h2>軸設定</h2>
-        <label>タイトル <input id="title" placeholder="例: 裏切る/裏切らない × 信頼できる/できない" /></label>
+        <label for="title">タイトル</label>
+        <input id="title" placeholder="例: 裏切る/裏切らない × 信頼できる/できない" />
+
         <div class="row">
-          <label>X軸 左 <input id="xMin" placeholder="裏切る" /></label>
-          <label>X軸 右 <input id="xMax" placeholder="裏切らない" /></label>
+          <div>
+            <label for="xMin">X軸 左</label>
+            <input id="xMin" placeholder="裏切る" />
+          </div>
+          <div>
+            <label for="xMax">X軸 右</label>
+            <input id="xMax" placeholder="裏切らない" />
+          </div>
         </div>
         <div class="row">
-          <label>Y軸 下 <input id="yMin" placeholder="信頼できない" /></label>
-          <label>Y軸 上 <input id="yMax" placeholder="信頼できる" /></label>
+          <div>
+            <label for="yMin">Y軸 下</label>
+            <input id="yMin" placeholder="信頼できない" />
+          </div>
+          <div>
+            <label for="yMax">Y軸 上</label>
+            <input id="yMax" placeholder="信頼できる" />
+          </div>
         </div>
         <div class="row">
-          <label>公開範囲
+          <div>
+            <label for="visibility">公開範囲</label>
             <select id="visibility">
               <option value="public">全体公開</option>
               <option value="url">URL共有</option>
             </select>
-          </label>
+          </div>
         </div>
-        <div class="actions single">
+        <div class="actions actions--two">
           <button id="presetBtn">サンプル軸を投入</button>
           <button id="saveAxis">軸を保存</button>
         </div>
-        <p id="saveMsg" class="save-msg"></p>
+        <p id="saveMsg" class="save-msg" role="status" aria-live="polite"></p>
       </section>
 
-      <section class="panel">
+      <!-- Add Oshi -->
+      <section class="panel" aria-label="推し追加">
         <h2>推しを追加</h2>
         <div class="row">
-          <label>名前 <input id="oshiName" /></label>
-          <label>X(-100~100) <input id="oshiX" type="number" min="-100" max="100" value="0" /></label>
+          <div>
+            <label for="oshiName">名前</label>
+            <input id="oshiName" />
+          </div>
+          <div>
+            <label for="oshiX">X(-100~100)</label>
+            <input id="oshiX" type="number" min="-100" max="100" value="0" />
+          </div>
         </div>
         <div class="row">
-          <label>Y(-100~100) <input id="oshiY" type="number" min="-100" max="100" value="0" /></label>
-          <label>タグ（カンマ区切り）<input id="oshiTags" placeholder="沼, てぇてぇ" /></label>
+          <div>
+            <label for="oshiY">Y(-100~100)</label>
+            <input id="oshiY" type="number" min="-100" max="100" value="0" />
+          </div>
+          <div>
+            <label for="oshiTags">タグ（カンマ区切り）</label>
+            <input id="oshiTags" placeholder="沼, てぇてぇ" />
+          </div>
         </div>
-        <label>画像（jpg / png / webp, 512KBまで）<input id="oshiImage" type="file" accept="image/jpeg,image/png,image/webp" /></label>
+        <label for="oshiImage">画像（jpg / png / webp, 512KBまで）</label>
+        <input id="oshiImage" type="file" accept="image/jpeg,image/png,image/webp" />
         <input id="oshiImageData" type="hidden" />
         <img id="oshiImagePreview" class="image-preview hidden" alt="" />
-        <p id="oshiImageError" class="error-msg"></p>
+        <p id="oshiImageError" class="error-msg" role="alert" aria-live="assertive"></p>
         <button id="addOshi">追加</button>
       </section>
 
-      <section class="panel">
+      <!-- Oshi List -->
+      <section class="panel" aria-label="推し一覧">
         <h2>推し一覧</h2>
-        <ul id="oshiList"></ul>
+        <ul id="oshiList" role="list"></ul>
       </section>
     </div>
   </main>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=20260222r"></script>
 </body>
 </html>

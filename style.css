@@ -1,95 +1,406 @@
-:root{
-  --bg:#0a0f1a;
-  --bg-soft:#121a2b;
-  --panel:#121827cc;
-  --line:#2c3a5f;
-  --text:#e7edf9;
-  --muted:#9fb0d4;
-  --accent:#7aa2ff;
-  --accent-2:#39d98a;
-}
-*{box-sizing:border-box}
-body{
-  font-family:'Avenir Next','Hiragino Sans','Noto Sans JP',sans-serif;
-  background:radial-gradient(1200px 600px at 20% -10%, #1a2647 0%, var(--bg) 60%);
-  color:var(--text);
-  margin:0;
-}
-header{
-  padding:28px 24px;
-  background:linear-gradient(180deg,#141d33 0%,#101827 100%);
-  border-bottom:1px solid var(--line);
-}
-h1{margin:0 0 8px;font-size:2.8rem;letter-spacing:.04em;line-height:1.05;background:linear-gradient(90deg,#ffffff 0%,#a8c4ff 45%,#7ee3a7 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
-header p{margin:0;color:var(--muted);font-size:1.1rem}
+/* ============================================================
+   推し軸 (oshijiku.com) – Stylesheet
+   Dark glassmorphism theme
+   ============================================================ */
 
-/* layout: MAP is full-width, rest below */
-main{display:flex;flex-direction:column;gap:16px;padding:18px;max-width:1360px;margin:auto}
-.controls{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+/* --- Design Tokens --- */
+:root {
+  --color-bg:        #0a0f1a;
+  --color-bg-soft:   #121a2b;
+  --color-panel:     #121827cc;
+  --color-panel-hi:  #141d31cc;
+  --color-line:      #2c3a5f;
+  --color-border:    #3a4e7d;
+  --color-text:      #e7edf9;
+  --color-text-sub:  #d9e3f8;
+  --color-muted:     #9fb0d4;
+  --color-accent:    #7aa2ff;
+  --color-accent-2:  #39d98a;
+  --color-cyan:      #6ee7ff;
+  --color-warn:      #ffd27a;
+  --color-danger:    #ff9da1;
 
-.panel{
-  background:linear-gradient(180deg,#141d31cc 0%,#101827cc 100%);
+  --color-input-bg:  #0c1424;
+  --color-input-bdr: #31456f;
+  --color-btn-bg:    #1a2d52;
+  --color-btn-pri:   linear-gradient(180deg, #1b376f, #13274d);
+  --color-btn-bdr:   #4d71b8;
+
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+
+  --font-stack: 'Avenir Next', 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+  --transition-fast: 0.15s ease;
+}
+
+/* --- Reset / Base --- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-stack);
+  background: radial-gradient(1200px 600px at 20% -10%, #1a2647 0%, var(--color-bg) 60%);
+  color: var(--color-text);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* --- Header --- */
+header {
+  padding: 28px 24px;
+  background: linear-gradient(180deg, #141d33 0%, #101827 100%);
+  border-bottom: 1px solid var(--color-line);
+}
+
+h1 {
+  margin: 0 0 8px;
+  font-size: 2.8rem;
+  letter-spacing: 0.04em;
+  line-height: 1.05;
+  background: linear-gradient(90deg, #fff 0%, #a8c4ff 45%, #7ee3a7 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+header p {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 1.1rem;
+}
+
+/* --- Layout --- */
+main {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 18px;
+  max-width: 1360px;
+  margin: 0 auto;
+}
+
+.controls {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+
+/* --- Panel (glassmorphism) --- */
+.panel {
+  background: linear-gradient(180deg, var(--color-panel-hi) 0%, var(--color-panel) 100%);
   backdrop-filter: blur(8px);
-  border:1px solid #3a4e7d;
-  border-radius:16px;
-  padding:14px;
-  box-shadow:0 10px 30px #00000033, inset 0 1px 0 #ffffff14;
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  padding: 14px;
+  box-shadow: 0 10px 30px #00000033, inset 0 1px 0 #ffffff14;
 }
-.panel h2{margin:4px 0 12px;font-size:2rem}
-label{display:block;font-size:.92rem;margin:8px 0;color:#d9e3f8}
-input,select,button,textarea{
-  width:100%;padding:10px 12px;border-radius:10px;border:1px solid #31456f;background:#0c1424;color:var(--text);
+
+.panel h2 {
+  margin: 4px 0 12px;
+  font-size: 2rem;
 }
-input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px #7aa2ff22}
-button{cursor:pointer;font-weight:700;transition:.15s ease}
-button:hover{transform:translateY(-1px);border-color:var(--accent);background:#1a2d52}
-button#saveAxis,button#addOshi,button#shareBtn{background:linear-gradient(180deg,#1b376f,#13274d);border-color:#4d71b8}
-.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 
-/* MAP - full width, bigger */
-#mapWrap{
-  width:100%;
-  max-width:720px;
-  margin:0 auto;
-  aspect-ratio:1;
-  background:#091224;
-  border:1px solid #2d4576;
-  border-radius:12px;
-  overflow:hidden;
-  touch-action:none;
+/* --- Form Elements --- */
+label {
+  display: block;
+  font-size: 0.92rem;
+  margin: 8px 0 4px;
+  color: var(--color-text-sub);
 }
-#map{width:100%;height:100%;cursor:default}
 
-.actions{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px}
-.actions.single{grid-template-columns:1fr 1fr}
-#copyBtn.copied{border-color:var(--accent-2);color:var(--accent-2)}
-.save-msg{min-height:1.2em;color:var(--accent-2);font-size:.9rem;margin:8px 0 0}
-textarea{min-height:72px}
-.hint{margin:8px 2px 0;color:var(--muted);font-size:.86rem}
-.hint.warn{color:#ffd27a}
-.error-msg{min-height:1.2em;margin:6px 0 0;color:#ff9da1;font-size:.86rem}
-.image-preview{display:block;max-width:140px;max-height:140px;border:1px solid #3b4d75;border-radius:10px;margin-top:8px;object-fit:cover}
-.hidden{display:none}
-li{margin:6px 0;color:#d6e1f7}
-.oshi-item{display:flex;align-items:center;gap:10px}
-.del-btn{width:auto;padding:4px 10px;border-radius:8px;background:#1a1024;border:1px solid #5a3a6a;color:#ff9da1;font-size:.85rem;flex-shrink:0;cursor:pointer}
-.del-btn:hover{background:#2d1232;border-color:#ff9da1}
-.oshi-thumb{width:42px;height:42px;border-radius:8px;object-fit:cover;border:1px solid #3b4d75;flex-shrink:0}
+input,
+select,
+button,
+textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-input-bdr);
+  background: var(--color-input-bg);
+  color: var(--color-text);
+  font-size: 1rem;
+}
 
-/* SVG elements */
-.grid{stroke:#1a2542;stroke-width:1}
-.axis{stroke:#3d4a67;stroke-width:2}
-.label{fill:#cdd8eb;font-size:13px}
-.axis-label{fill:#8a9fc0;font-size:12px}
-.oshi-label{fill:#e7edf9;font-size:12px;font-weight:600}
-.map-title{fill:#9fb0d4;font-size:11px}
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px rgba(122, 162, 255, 0.13);
+}
 
-/* dots */
-.dot{fill:#6ee7ff;stroke:#042b3a;stroke-width:2;transition:r .15s ease}
-.dot-hover{fill:transparent;cursor:grab}
-.img-ring{fill:none;stroke:#6ee7ff;stroke-width:2;transition:stroke .15s ease}
-.oshi-dot:hover .dot{r:11;fill:#a4f0ff;filter:drop-shadow(0 0 6px #6ee7ff88)}
-.oshi-dot:hover .img-ring{stroke:#a4f0ff;filter:drop-shadow(0 0 6px #6ee7ff88)}
-.oshi-dot.dragging .dot-hover{cursor:grabbing}
-.oshi-dot.dragging .dot{fill:#ffd27a;stroke:#5a3a00}
-.oshi-dot.dragging .img-ring{stroke:#ffd27a}
+button {
+  cursor: pointer;
+  font-weight: 700;
+  transition: var(--transition-fast);
+}
+
+button:hover {
+  transform: translateY(-1px);
+  border-color: var(--color-accent);
+  background: var(--color-btn-bg);
+}
+
+button:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* Primary buttons */
+#saveAxis,
+#addOshi,
+#shareBtn {
+  background: var(--color-btn-pri);
+  border-color: var(--color-btn-bdr);
+}
+
+/* --- Grid Row --- */
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+/* --- MAP Container --- */
+#mapWrap {
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  aspect-ratio: 1;
+  background: #091224;
+  border: 1px solid #2d4576;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  touch-action: none;
+}
+
+#map {
+  width: 100%;
+  height: 100%;
+  cursor: default;
+}
+
+/* --- Action Button Groups --- */
+.actions {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.actions--three {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+.actions--two {
+  grid-template-columns: 1fr 1fr;
+}
+
+/* Copy button success state */
+#copyBtn.copied {
+  border-color: var(--color-accent-2);
+  color: var(--color-accent-2);
+}
+
+/* --- Messages --- */
+.save-msg {
+  min-height: 1.2em;
+  color: var(--color-accent-2);
+  font-size: 0.9rem;
+  margin: 8px 0 0;
+}
+
+textarea {
+  min-height: 72px;
+  resize: vertical;
+}
+
+.hint {
+  margin: 8px 2px 0;
+  color: var(--color-muted);
+  font-size: 0.86rem;
+}
+
+.hint--warn {
+  color: var(--color-warn);
+}
+
+.error-msg {
+  min-height: 1.2em;
+  margin: 6px 0 0;
+  color: var(--color-danger);
+  font-size: 0.86rem;
+}
+
+/* --- Image Preview --- */
+.image-preview {
+  display: block;
+  max-width: 140px;
+  max-height: 140px;
+  border: 1px solid #3b4d75;
+  border-radius: var(--radius-md);
+  margin-top: 8px;
+  object-fit: cover;
+}
+
+.hidden {
+  display: none;
+}
+
+/* --- Oshi List --- */
+ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+li {
+  margin: 6px 0;
+  color: #d6e1f7;
+}
+
+.oshi-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.oshi-thumb {
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+  border: 1px solid #3b4d75;
+  flex-shrink: 0;
+}
+
+.del-btn {
+  width: auto;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  background: #1a1024;
+  border: 1px solid #5a3a6a;
+  color: var(--color-danger);
+  font-size: 0.85rem;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.del-btn:hover {
+  background: #2d1232;
+  border-color: var(--color-danger);
+}
+
+/* --- SVG MAP Elements --- */
+.grid {
+  stroke: #1a2542;
+  stroke-width: 1;
+}
+
+.axis {
+  stroke: #3d4a67;
+  stroke-width: 2;
+}
+
+.label {
+  fill: #cdd8eb;
+  font-size: 13px;
+}
+
+.axis-label {
+  fill: #8a9fc0;
+  font-size: 12px;
+}
+
+.oshi-label {
+  fill: var(--color-text);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.map-title {
+  fill: var(--color-muted);
+  font-size: 11px;
+}
+
+/* Oshi dots */
+.dot {
+  fill: var(--color-cyan);
+  stroke: #042b3a;
+  stroke-width: 2;
+  transition: r var(--transition-fast);
+}
+
+.dot-hover {
+  fill: transparent;
+  cursor: grab;
+}
+
+.img-ring {
+  fill: none;
+  stroke: var(--color-cyan);
+  stroke-width: 2;
+  transition: stroke var(--transition-fast);
+}
+
+/* Hover effects */
+.oshi-dot:hover .dot {
+  r: 11;
+  fill: #a4f0ff;
+  filter: drop-shadow(0 0 6px rgba(110, 231, 255, 0.53));
+}
+
+.oshi-dot:hover .img-ring {
+  stroke: #a4f0ff;
+  filter: drop-shadow(0 0 6px rgba(110, 231, 255, 0.53));
+}
+
+/* Drag state */
+.oshi-dot.dragging .dot-hover {
+  cursor: grabbing;
+}
+
+.oshi-dot.dragging .dot {
+  fill: var(--color-warn);
+  stroke: #5a3a00;
+}
+
+.oshi-dot.dragging .img-ring {
+  stroke: var(--color-warn);
+}
+
+/* --- Responsive --- */
+@media (max-width: 600px) {
+  h1 {
+    font-size: 2rem;
+  }
+
+  header p {
+    font-size: 0.95rem;
+  }
+
+  .panel {
+    padding: 12px;
+  }
+
+  .panel h2 {
+    font-size: 1.5rem;
+  }
+
+  .controls {
+    grid-template-columns: 1fr;
+  }
+
+  .actions--three {
+    grid-template-columns: 1fr;
+  }
+
+  .row {
+    grid-template-columns: 1fr;
+  }
+}
