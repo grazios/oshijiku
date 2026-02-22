@@ -59,6 +59,12 @@ foreach ($oshis as $o) {
     $cleanOshis[] = ['name' => (string)$o['name'], 'x' => $x, 'y' => $y, 'tags' => $tags];
 }
 
+// Validate visibility
+$visibility = $axis['visibility'] ?? 'public';
+if (!in_array($visibility, ['public', 'url'], true)) {
+    $axis['visibility'] = 'public';
+}
+
 $data = json_encode(['axis' => $axis, 'oshis' => $cleanOshis], JSON_UNESCAPED_UNICODE);
 $shareId = generateId();
 $deleteKey = generateId();

@@ -13,7 +13,7 @@
   --color-border:    #3a4e7d;
   --color-text:      #e7edf9;
   --color-text-sub:  #d9e3f8;
-  --color-muted:     #9fb0d4;
+  --color-muted:     #b0c4e8;
   --color-accent:    #7aa2ff;
   --color-accent-2:  #39d98a;
   --color-cyan:      #6ee7ff;
@@ -206,16 +206,20 @@ button:focus-visible {
   grid-template-columns: 1fr 1fr;
 }
 
-/* Delete share button */
+/* Delete share button – compact outline style */
 #deleteShareBtn {
   margin-top: 8px;
-  background: #1a1024;
-  border-color: #5a3a6a;
+  width: auto;
+  padding: 4px 12px;
+  font-size: 0.8rem;
+  font-weight: 400;
+  background: transparent;
+  border: 1px solid var(--color-danger);
   color: var(--color-danger);
 }
 
 #deleteShareBtn:hover {
-  background: #2d1232;
+  background: #2d123222;
   border-color: var(--color-danger);
 }
 

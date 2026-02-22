@@ -265,6 +265,7 @@ function renderOshiList() {
     del.title = `${o.name}を削除`;
     del.setAttribute('aria-label', `${o.name}を削除`);
     del.onclick = () => {
+      if (!confirm(`「${o.name}」を削除しますか？`)) return;
       state.oshis.splice(i, 1);
       saveToStorage();
       draw();
@@ -445,6 +446,7 @@ $('shareBtn').onclick = async () => {
       return;
     }
     $('shareUrl').value = json.url;
+    updateShareButtons();
 
     // Save delete_key to localStorage
     const keys = JSON.parse(localStorage.getItem('oshijiku_delete_keys') || '{}');
@@ -466,12 +468,15 @@ $('shareBtn').onclick = async () => {
   }
 };
 
+function updateShareButtons() {
+  const hasUrl = !!$('shareUrl').value.trim();
+  $('copyBtn').disabled = !hasUrl;
+  $('forkBtn').disabled = !hasUrl;
+}
+
 $('copyBtn').onclick = async () => {
   const url = $('shareUrl').value.trim();
-  if (!url) {
-    alert('先に共有リンクを作ってね');
-    return;
-  }
+  if (!url) return;
   try {
     await navigator.clipboard.writeText(url);
     const btn = $('copyBtn');
@@ -513,7 +518,7 @@ $('deleteShareBtn').onclick = async () => {
     alert('削除キーが見つかりません');
     return;
   }
-  if (!confirm('この共有リンクを削除しますか？')) return;
+  if (!confirm('共有リンクを削除しますか？この操作は取り消せません。')) return;
 
   try {
     const res = await fetch('/api/delete.php', {
@@ -528,6 +533,7 @@ $('deleteShareBtn').onclick = async () => {
       currentShareId = null;
       $('shareUrl').value = '';
       $('deleteShareBtn').classList.add('hidden');
+      updateShareButtons();
       $('shareMsg').textContent = '共有を削除しました';
       setTimeout(() => { $('shareMsg').textContent = ''; }, 3000);
     } else {
@@ -577,10 +583,12 @@ function loadSampleData() {
         showDeleteBtn(shareParam);
       } else {
         console.warn('Failed to load shared map:', json.error);
+        alert('共有マップが見つかりませんでした');
         loadFromStorage();
       }
     } catch (e) {
       console.warn('Failed to fetch shared map:', e);
+      alert('共有マップの読み込みに失敗しました');
       loadFromStorage();
     }
   } else if (data) {
@@ -603,4 +611,5 @@ function loadSampleData() {
   syncInputsFromState();
   draw();
   resetImagePicker();
+  updateShareButtons();
 })();

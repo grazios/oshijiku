@@ -20,6 +20,11 @@ if (!$shareId || !$deleteKey) {
     exit;
 }
 
+if (!preg_match('/^[a-f0-9]{24}$/', $shareId) || !preg_match('/^[a-f0-9]{24}$/', $deleteKey)) {
+    jsonResponse(['ok' => false, 'error' => 'Invalid format'], 400);
+    exit;
+}
+
 $db = getDb();
 $stmt = $db->prepare('DELETE FROM maps WHERE share_id = ? AND delete_key = ?');
 $stmt->execute([$shareId, $deleteKey]);
