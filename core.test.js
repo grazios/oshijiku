@@ -11,6 +11,11 @@ describe('clamp', () => {
   it('clamps to upper bound', () => {
     expect(clamp(200, 0, 100)).toBe(100);
   });
+  it('returns lo and hi exactly at boundary', () => {
+    expect(clamp(0, 0, 100)).toBe(0);
+    expect(clamp(100, 0, 100)).toBe(100);
+    expect(clamp(-100, -100, 100)).toBe(-100);
+  });
 });
 
 describe('toSvgX / toSvgY', () => {
@@ -38,6 +43,12 @@ describe('fromSvgX / fromSvgY', () => {
     expect(fromSvgY(550)).toBe(-100);
     expect(fromSvgY(300)).toBe(0);
     expect(fromSvgY(50)).toBe(100);
+  });
+  it('roundtrip consistency for toSvgX↔fromSvgX and toSvgY↔fromSvgY', () => {
+    for (const v of [-100, -50, 0, 50, 100]) {
+      expect(fromSvgX(toSvgX(v))).toBe(v);
+      expect(fromSvgY(toSvgY(v))).toBe(v);
+    }
   });
 });
 
@@ -96,5 +107,94 @@ describe('sanitizeAndLoad', () => {
     const result = sanitizeAndLoad(input, defaultState);
     expect(result.oshis).toHaveLength(1);
     expect(result.oshis[0].name).toBe('Valid');
+  });
+
+  // P0: NaN座標 → 0にフォールバック
+  it('falls back NaN coordinates to 0', () => {
+    const input = { oshis: [{ name: 'A', x: 'abc', y: 'xyz' }] };
+    const result = sanitizeAndLoad(input, defaultState);
+    expect(result.oshis[0].x).toBe(0);
+    expect(result.oshis[0].y).toBe(0);
+  });
+
+  // P0: Infinity座標 → clamp
+  it('clamps Infinity coordinates', () => {
+    const input = { oshis: [{ name: 'A', x: Infinity, y: -Infinity }] };
+    const result = sanitizeAndLoad(input, defaultState);
+    expect(result.oshis[0].x).toBe(0);
+    expect(result.oshis[0].y).toBe(0);
+  });
+
+  // P0: 不正なvisibility → 'public'
+  it('falls back invalid visibility to public', () => {
+    const input = { axis: { visibility: 'private' } };
+    const result = sanitizeAndLoad(input, defaultState);
+    expect(result.axis.visibility).toBe('public');
+  });
+
+  // P0: tags に非配列 → 空配列
+  it('converts non-array tags to empty array', () => {
+    const input = { oshis: [{ name: 'A', x: 0, y: 0, tags: 'hello' }] };
+    const result = sanitizeAndLoad(input, defaultState);
+    expect(result.oshis[0].tags).toEqual([]);
+  });
+
+  // P0: 有効なbase64 imageData保持
+  it('preserves valid base64 imageData', () => {
+    const img = 'data:image/png;base64,iVBORw0KGgo=';
+    const input = { oshis: [{ name: 'A', x: 0, y: 0, imageData: img }] };
+    const result = sanitizeAndLoad(input, defaultState);
+    expect(result.oshis[0].imageData).toBe(img);
+  });
+
+  // P1: イミュータビリティ
+  it('does not mutate the original state', () => {
+    const state = { axis: { title: 'Orig', xMin: '左', xMax: '右', yMin: '下', yMax: '上', visibility: 'public' }, oshis: [{ name: 'X', x: 0, y: 0 }] };
+    const stateCopy = JSON.parse(JSON.stringify(state));
+    sanitizeAndLoad({ axis: { title: 'New' }, oshis: [] }, state);
+    expect(state).toEqual(stateCopy);
+  });
+
+  // P1: 非オブジェクト要素フィルタ
+  it('filters non-object elements in oshis array', () => {
+    const input = { oshis: [null, 42, 'str', { name: 'Valid', x: 0, y: 0 }] };
+    const result = sanitizeAndLoad(input, defaultState);
+    expect(result.oshis).toHaveLength(1);
+    expect(result.oshis[0].name).toBe('Valid');
+  });
+
+  // P1: axisだけ/oshisだけ
+  it('handles axis-only or oshis-only input', () => {
+    const axisOnly = sanitizeAndLoad({ axis: { title: 'T' } }, defaultState);
+    expect(axisOnly.axis.title).toBe('T');
+    expect(axisOnly.oshis).toEqual([]);
+
+    const oshisOnly = sanitizeAndLoad({ oshis: [{ name: 'A', x: 1, y: 2 }] }, defaultState);
+    expect(oshisOnly.axis).toEqual(defaultState.axis);
+    expect(oshisOnly.oshis).toHaveLength(1);
+  });
+
+  // P2: 大量oshi
+  it('handles 100 oshis without error', () => {
+    const oshis = Array.from({ length: 100 }, (_, i) => ({ name: `Oshi${i}`, x: i - 50, y: 50 - i }));
+    const result = sanitizeAndLoad({ oshis }, defaultState);
+    expect(result.oshis).toHaveLength(100);
+  });
+
+  // P2: tags内の空文字フィルタ
+  it('filters empty strings in tags', () => {
+    const input = { oshis: [{ name: 'A', x: 0, y: 0, tags: ['good', '', 'nice', ''] }] };
+    const result = sanitizeAndLoad(input, defaultState);
+    expect(result.oshis[0].tags).toEqual(['good', 'nice']);
+  });
+
+  // P2: undefinedフィールド → デフォルト値
+  it('uses defaults for undefined fields', () => {
+    const input = { oshis: [{ name: 'A' }] };
+    const result = sanitizeAndLoad(input, defaultState);
+    expect(result.oshis[0].x).toBe(0);
+    expect(result.oshis[0].y).toBe(0);
+    expect(result.oshis[0].tags).toEqual([]);
+    expect(result.oshis[0].imageData).toBe('');
   });
 });
