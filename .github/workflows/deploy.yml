@@ -1,0 +1,27 @@
+name: Deploy to Xserver
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to Xserver via SCP
+        run: |
+          scp -P 10022 -i ~/.ssh/oshijiku.pem \
+            -o StrictHostKeyChecking=no \
+            index.html style.css app.js \
+            xs536554@sv13378.xserver.jp:/home/xs536554/oshijiku.com/public_html/
+
+      - name: Verify deployment
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://oshijiku.com)
+          if [ "$STATUS" != "200" ]; then
+            echo "❌ Deploy verification failed: HTTP $STATUS"
+            exit 1
+          fi
+          echo "✅ Deploy OK: HTTP $STATUS"
