@@ -13,6 +13,8 @@ const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const STORAGE_KEY = 'oshijiku_state';
 
+let currentShareId = null;
+
 /* ----------------------------------------------------------
    State
    ---------------------------------------------------------- */
@@ -419,7 +421,7 @@ $('addOshi').onclick = addOshi;
 /* ----------------------------------------------------------
    Share / Fork
    ---------------------------------------------------------- */
-$('shareBtn').onclick = () => {
+$('shareBtn').onclick = async () => {
   const hasImages = state.oshis.some((o) => o.imageData);
   const shareState = {
     axis: { ...state.axis },
@@ -430,12 +432,37 @@ $('shareBtn').onclick = () => {
       tags: o.tags,
     })),
   };
-  const json = JSON.stringify(shareState);
-  const encoded = btoa(unescape(encodeURIComponent(json)));
-  $('shareUrl').value = `${location.origin}${location.pathname}?data=${encodeURIComponent(encoded)}`;
 
-  if (hasImages) {
-    alert('※画像は共有URLに含まれません');
+  try {
+    const res = await fetch('/api/save.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(shareState),
+    });
+    const json = await res.json();
+    if (!json.ok) {
+      alert('共有に失敗しました: ' + (json.error || '不明なエラー'));
+      return;
+    }
+    $('shareUrl').value = json.url;
+
+    // Save delete_key to localStorage
+    const keys = JSON.parse(localStorage.getItem('oshijiku_delete_keys') || '{}');
+    keys[json.share_id] = json.delete_key;
+    localStorage.setItem('oshijiku_delete_keys', JSON.stringify(keys));
+
+    currentShareId = json.share_id;
+    showDeleteBtn(json.share_id);
+
+    $('shareMsg').textContent = '共有リンクを作成しました！削除キーはこのブラウザに保存されています。';
+    setTimeout(() => { $('shareMsg').textContent = ''; }, 5000);
+
+    if (hasImages) {
+      alert('※画像は共有リンクに含まれません');
+    }
+  } catch (e) {
+    console.error('Share failed:', e);
+    alert('共有に失敗しました。通信エラーです。');
   }
 };
 
@@ -466,6 +493,53 @@ $('forkBtn').onclick = () => {
 };
 
 /* ----------------------------------------------------------
+   Delete Shared Map
+   ---------------------------------------------------------- */
+function showDeleteBtn(shareId) {
+  const keys = JSON.parse(localStorage.getItem('oshijiku_delete_keys') || '{}');
+  const btn = $('deleteShareBtn');
+  if (keys[shareId]) {
+    btn.classList.remove('hidden');
+  } else {
+    btn.classList.add('hidden');
+  }
+}
+
+$('deleteShareBtn').onclick = async () => {
+  if (!currentShareId) return;
+  const keys = JSON.parse(localStorage.getItem('oshijiku_delete_keys') || '{}');
+  const deleteKey = keys[currentShareId];
+  if (!deleteKey) {
+    alert('削除キーが見つかりません');
+    return;
+  }
+  if (!confirm('この共有リンクを削除しますか？')) return;
+
+  try {
+    const res = await fetch('/api/delete.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ share_id: currentShareId, delete_key: deleteKey }),
+    });
+    const json = await res.json();
+    if (json.ok) {
+      delete keys[currentShareId];
+      localStorage.setItem('oshijiku_delete_keys', JSON.stringify(keys));
+      currentShareId = null;
+      $('shareUrl').value = '';
+      $('deleteShareBtn').classList.add('hidden');
+      $('shareMsg').textContent = '共有を削除しました';
+      setTimeout(() => { $('shareMsg').textContent = ''; }, 3000);
+    } else {
+      alert('削除に失敗しました: ' + (json.error || '不明なエラー'));
+    }
+  } catch (e) {
+    console.error('Delete failed:', e);
+    alert('削除に失敗しました。通信エラーです。');
+  }
+};
+
+/* ----------------------------------------------------------
    Sample Data
    ---------------------------------------------------------- */
 function loadSampleData() {
@@ -487,11 +561,30 @@ function loadSampleData() {
 /* ----------------------------------------------------------
    Initialisation
    ---------------------------------------------------------- */
-(function init() {
+(async function init() {
   const params = new URLSearchParams(location.search);
+  const shareParam = params.get('s');
   const data = params.get('data');
 
-  if (data) {
+  if (shareParam) {
+    // DB shared map
+    try {
+      const res = await fetch(`/api/load.php?id=${encodeURIComponent(shareParam)}`);
+      const json = await res.json();
+      if (json.ok && json.data) {
+        applySanitized(json.data);
+        currentShareId = shareParam;
+        showDeleteBtn(shareParam);
+      } else {
+        console.warn('Failed to load shared map:', json.error);
+        loadFromStorage();
+      }
+    } catch (e) {
+      console.warn('Failed to fetch shared map:', e);
+      loadFromStorage();
+    }
+  } else if (data) {
+    // Legacy base64 URL format
     try {
       const json = decodeURIComponent(escape(atob(data)));
       applySanitized(JSON.parse(json));

@@ -1,0 +1,4 @@
+# API directory - allow PHP
+<FilesMatch "\.php$">
+    Require all granted
+</FilesMatch>

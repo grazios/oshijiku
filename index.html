@@ -110,7 +110,9 @@
         <button id="forkBtn" aria-label="コピーして自分用に作る">コピーして自分用に作る</button>
       </div>
       <textarea id="shareUrl" readonly placeholder="共有リンクがここに出る" aria-label="共有URL"></textarea>
-      <p class="hint">URLに保存されます（ブラウザのブックマークで残せます）</p>
+      <p id="shareMsg" class="save-msg" role="status" aria-live="polite"></p>
+      <button id="deleteShareBtn" class="hidden" aria-label="共有を削除">共有を削除</button>
+      <p class="hint">DBに保存されます。共有リンクで誰でも閲覧できます</p>
     </section>
 
     <!-- ===== Oshi List ===== -->

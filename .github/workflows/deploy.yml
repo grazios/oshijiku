@@ -28,6 +28,17 @@ jobs:
             -o StrictHostKeyChecking=no \
             index.html style.css app.js core.js \
             xs536554@sv13378.xserver.jp:/home/xs536554/oshijiku.com/public_html/
+          
+          # API & uploads directories
+          ssh -i ~/.ssh/oshijiku.pem -p 10022 xs536554@sv13378.xserver.jp 'mkdir -p /home/xs536554/oshijiku.com/public_html/api /home/xs536554/oshijiku.com/public_html/uploads'
+          scp -P 10022 -i ~/.ssh/oshijiku.pem \
+            -o StrictHostKeyChecking=no \
+            api/* \
+            xs536554@sv13378.xserver.jp:/home/xs536554/oshijiku.com/public_html/api/
+          scp -P 10022 -i ~/.ssh/oshijiku.pem \
+            -o StrictHostKeyChecking=no \
+            uploads/.htaccess \
+            xs536554@sv13378.xserver.jp:/home/xs536554/oshijiku.com/public_html/uploads/
 
       - name: Verify deployment
         run: |

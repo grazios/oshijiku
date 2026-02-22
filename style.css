@@ -206,6 +206,19 @@ button:focus-visible {
   grid-template-columns: 1fr 1fr;
 }
 
+/* Delete share button */
+#deleteShareBtn {
+  margin-top: 8px;
+  background: #1a1024;
+  border-color: #5a3a6a;
+  color: var(--color-danger);
+}
+
+#deleteShareBtn:hover {
+  background: #2d1232;
+  border-color: var(--color-danger);
+}
+
 /* Copy button success state */
 #copyBtn.copied {
   border-color: var(--color-accent-2);

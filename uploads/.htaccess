@@ -1,0 +1,4 @@
+php_flag engine off
+SetHandler none
+RemoveHandler .php .phtml .php3 .php4 .php5 .phps
+Options -Indexes
