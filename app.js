@@ -6,6 +6,7 @@
 import {
   MAP_SIZE, MAP_PAD, MAP_RANGE, IMAGE_DATA_RE,
   toSvgX, toSvgY, fromSvgX, fromSvgY, clamp, sanitizeAndLoad,
+  parseTags, validateOshiInput, buildSharePayload, validateVisibility,
 } from './core.js';
 
 const MAX_IMAGE_BYTES = 512 * 1024;
@@ -375,29 +376,21 @@ $('saveAxis').onclick = () => {
    ---------------------------------------------------------- */
 function addOshi() {
   const name = $('oshiName').value.trim();
-  if (!name) {
-    alert('名前入れて〜');
+  const result = validateOshiInput(name, $('oshiX').value || 0, $('oshiY').value || 0);
+  if (!result.valid) {
+    alert(result.error);
     return;
   }
 
-  const rawX = Number($('oshiX').value || 0);
-  const rawY = Number($('oshiY').value || 0);
-  if (Number.isNaN(rawX) || Number.isNaN(rawY)) {
-    alert('座標は数値で入れてね');
-    return;
-  }
-
-  const x = clamp(rawX, -100, 100);
-  const y = clamp(rawY, -100, 100);
-  if (x !== rawX || y !== rawY) {
+  if (result.clamped) {
     alert('座標は-100〜100に補正したよ');
   }
 
   state.oshis.push({
     name,
-    x,
-    y,
-    tags: $('oshiTags').value.split(',').map((s) => s.trim()).filter(Boolean),
+    x: result.x,
+    y: result.y,
+    tags: parseTags($('oshiTags').value),
     imageData: $('oshiImageData').value || '',
   });
 
@@ -424,15 +417,7 @@ $('addOshi').onclick = addOshi;
    ---------------------------------------------------------- */
 $('shareBtn').onclick = async () => {
   const hasImages = state.oshis.some((o) => o.imageData);
-  const shareState = {
-    axis: { ...state.axis },
-    oshis: state.oshis.map((o) => ({
-      name: o.name,
-      x: o.x,
-      y: o.y,
-      tags: o.tags,
-    })),
-  };
+  const shareState = buildSharePayload(state);
 
   try {
     const res = await fetch('/api/save.php', {

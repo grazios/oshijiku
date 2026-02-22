@@ -29,6 +29,39 @@ export function clamp(v, lo, hi) {
   return Math.max(lo, Math.min(hi, v));
 }
 
+/* ----------------------------------------------------------
+   Pure logic extracted from app.js
+   ---------------------------------------------------------- */
+
+export function parseTags(csv) {
+  return String(csv ?? '').split(',').map(s => s.trim()).filter(Boolean);
+}
+
+export function validateOshiInput(name, x, y) {
+  if (!String(name).trim()) return { valid: false, error: '名前入れて〜' };
+  const nx = Number(x);
+  const ny = Number(y);
+  if (Number.isNaN(nx) || Number.isNaN(ny)) return { valid: false, error: '座標は数値で入れてね' };
+  const cx = clamp(nx, -100, 100);
+  const cy = clamp(ny, -100, 100);
+  const clamped = cx !== nx || cy !== ny;
+  return { valid: true, x: cx, y: cy, clamped };
+}
+
+export function buildSharePayload(state) {
+  return {
+    axis: { ...state.axis },
+    oshis: state.oshis.map(o => {
+      const { imageData, ...rest } = o;
+      return { ...rest };
+    }),
+  };
+}
+
+export function validateVisibility(v) {
+  return v === 'public' || v === 'url' ? v : 'public';
+}
+
 /**
  * Safely parse and merge loaded data into a state object, sanitising every field.
  * Returns the sanitised state (does NOT mutate the passed-in state).

@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { clamp, toSvgX, toSvgY, fromSvgX, fromSvgY, sanitizeAndLoad } from './core.js';
+import {
+  clamp, toSvgX, toSvgY, fromSvgX, fromSvgY, sanitizeAndLoad,
+  IMAGE_DATA_RE, parseTags, validateOshiInput, buildSharePayload, validateVisibility,
+} from './core.js';
 
 describe('clamp', () => {
   it('returns value when within range', () => {
@@ -197,4 +200,97 @@ describe('sanitizeAndLoad', () => {
     expect(result.oshis[0].tags).toEqual([]);
     expect(result.oshis[0].imageData).toBe('');
   });
+});
+
+/* ----------------------------------------------------------
+   Boundary tests for existing functions
+   ---------------------------------------------------------- */
+describe('toSvgX / fromSvgX boundary values', () => {
+  it('toSvgX(NaN) → NaN', () => { expect(toSvgX(NaN)).toBeNaN(); });
+  it('toSvgX(Infinity) → Infinity', () => { expect(toSvgX(Infinity)).toBe(Infinity); });
+  it('fromSvgX(NaN) → NaN', () => { expect(fromSvgX(NaN)).toBeNaN(); });
+});
+
+describe('IMAGE_DATA_RE', () => {
+  it('matches jpeg', () => { expect(IMAGE_DATA_RE.test('data:image/jpeg;base64,/9j/4AAQ...')).toBe(true); });
+  it('rejects gif', () => { expect(IMAGE_DATA_RE.test('data:image/gif;base64,...')).toBe(false); });
+  it('matches png with empty base64', () => { expect(IMAGE_DATA_RE.test('data:image/png;base64,')).toBe(true); });
+  it('rejects non-data-url', () => { expect(IMAGE_DATA_RE.test('not-a-data-url')).toBe(false); });
+  it('rejects empty string', () => { expect(IMAGE_DATA_RE.test('')).toBe(false); });
+});
+
+/* ----------------------------------------------------------
+   parseTags
+   ---------------------------------------------------------- */
+describe('parseTags', () => {
+  it('parses comma-separated tags with trim', () => {
+    expect(parseTags('沼, てぇてぇ, ')).toEqual(['沼', 'てぇてぇ']);
+  });
+  it('returns empty array for empty string', () => { expect(parseTags('')).toEqual([]); });
+  it('returns empty array for only commas', () => { expect(parseTags(',,,')).toEqual([]); });
+  it('handles single tag', () => { expect(parseTags('推し')).toEqual(['推し']); });
+});
+
+/* ----------------------------------------------------------
+   validateOshiInput
+   ---------------------------------------------------------- */
+describe('validateOshiInput', () => {
+  it('rejects empty name', () => {
+    expect(validateOshiInput('', 0, 0)).toEqual({ valid: false, error: '名前入れて〜' });
+  });
+  it('rejects NaN x', () => {
+    expect(validateOshiInput('A', NaN, 0)).toEqual({ valid: false, error: '座標は数値で入れてね' });
+  });
+  it('rejects NaN y', () => {
+    expect(validateOshiInput('A', 0, NaN)).toEqual({ valid: false, error: '座標は数値で入れてね' });
+  });
+  it('clamps out-of-range x', () => {
+    expect(validateOshiInput('A', 150, 0)).toEqual({ valid: true, x: 100, y: 0, clamped: true });
+  });
+  it('returns exact values in range', () => {
+    expect(validateOshiInput('A', 50, -30)).toEqual({ valid: true, x: 50, y: -30, clamped: false });
+  });
+  it('clamps negative out-of-range', () => {
+    expect(validateOshiInput('A', -200, -200)).toEqual({ valid: true, x: -100, y: -100, clamped: true });
+  });
+  it('rejects whitespace-only name', () => {
+    expect(validateOshiInput('   ', 0, 0)).toEqual({ valid: false, error: '名前入れて〜' });
+  });
+});
+
+/* ----------------------------------------------------------
+   buildSharePayload
+   ---------------------------------------------------------- */
+describe('buildSharePayload', () => {
+  it('excludes imageData from oshis', () => {
+    const result = buildSharePayload({
+      axis: { title: 'T', xMin: 'L', xMax: 'R', yMin: 'D', yMax: 'U', visibility: 'public' },
+      oshis: [{ name: 'A', x: 10, y: 20, tags: ['t'], imageData: 'data:image/png;base64,...' }],
+    });
+    expect(result.oshis[0]).toEqual({ name: 'A', x: 10, y: 20, tags: ['t'] });
+    expect(result.oshis[0]).not.toHaveProperty('imageData');
+  });
+  it('copies axis', () => {
+    const state = { axis: { title: 'X' }, oshis: [] };
+    expect(buildSharePayload(state).axis.title).toBe('X');
+  });
+  it('handles empty oshis', () => {
+    expect(buildSharePayload({ axis: {}, oshis: [] }).oshis).toEqual([]);
+  });
+  it('does not mutate original', () => {
+    const state = { axis: { title: 'T' }, oshis: [{ name: 'A', x: 0, y: 0, tags: [], imageData: 'x' }] };
+    buildSharePayload(state);
+    expect(state.oshis[0].imageData).toBe('x');
+  });
+});
+
+/* ----------------------------------------------------------
+   validateVisibility
+   ---------------------------------------------------------- */
+describe('validateVisibility', () => {
+  it('accepts public', () => { expect(validateVisibility('public')).toBe('public'); });
+  it('accepts url', () => { expect(validateVisibility('url')).toBe('url'); });
+  it('rejects invalid', () => { expect(validateVisibility('invalid')).toBe('public'); });
+  it('rejects undefined', () => { expect(validateVisibility(undefined)).toBe('public'); });
+  it('rejects null', () => { expect(validateVisibility(null)).toBe('public'); });
 });
