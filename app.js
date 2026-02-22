@@ -239,12 +239,17 @@ function draw() {
    ---------------------------------------------------------- */
 let dragIdx = -1;
 let dragG = null;
+let dragOrigSvgX = 0;
+let dragOrigSvgY = 0;
 
 function handlePointerDown(evt) {
   const g = evt.target.closest('.oshi-dot');
   if (!g) return;
   dragIdx = Number(g.dataset.idx);
   dragG = g;
+  const oshi = state.oshis[dragIdx];
+  dragOrigSvgX = toSvgX(oshi.x);
+  dragOrigSvgY = toSvgY(oshi.y);
   map.setPointerCapture(evt.pointerId);
   g.classList.add('dragging');
   evt.preventDefault();
@@ -258,13 +263,11 @@ function handlePointerMove(evt) {
   state.oshis[dragIdx].x = newX;
   state.oshis[dragIdx].y = newY;
 
-  // SF-1: Update only the dragged <g> transform instead of full redraw
-  const origX = toSvgX(0); // We need delta from original position
-  const svgX = toSvgX(newX);
-  const svgY = toSvgY(newY);
-  // For simplicity during drag, do a full redraw (the perf diff is negligible for <100 oshis)
-  // A true transform-only approach requires tracking original positions per-element.
-  draw();
+  // SF-1: Transform-only approach – no draw() during drag
+  const dx = toSvgX(newX) - dragOrigSvgX;
+  const dy = toSvgY(newY) - dragOrigSvgY;
+  dragG.setAttribute('transform', `translate(${dx},${dy})`);
+  renderOshiList();
 }
 
 function handlePointerEnd() {
