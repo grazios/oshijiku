@@ -12,7 +12,7 @@
   <meta property="og:image" content="https://oshijiku.com/ogp.png" />
   <meta name="twitter:card" content="summary" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📌</text></svg>" />
-  <link rel="stylesheet" href="style.css?v=20260222s" />
+  <link rel="stylesheet" href="style.css?v=20260223a" />
 </head>
 <body>
   <header role="banner">
@@ -21,89 +21,14 @@
   </header>
 
   <main>
-    <!-- ===== Controls Grid (軸設定 + 推し追加) ===== -->
-    <div class="controls">
-      <!-- Axis Settings -->
-      <section class="panel" aria-label="軸設定">
-        <h2>軸設定</h2>
-        <label for="title">タイトル</label>
-        <input id="title" placeholder="例: 裏切る/裏切らない × 信頼できる/できない" />
-
-        <div class="row">
-          <div>
-            <label for="xMin">X軸 左</label>
-            <input id="xMin" placeholder="裏切る" />
-          </div>
-          <div>
-            <label for="xMax">X軸 右</label>
-            <input id="xMax" placeholder="裏切らない" />
-          </div>
-        </div>
-        <div class="row">
-          <div>
-            <label for="yMin">Y軸 下</label>
-            <input id="yMin" placeholder="信頼できない" />
-          </div>
-          <div>
-            <label for="yMax">Y軸 上</label>
-            <input id="yMax" placeholder="信頼できる" />
-          </div>
-        </div>
-        <div class="row">
-          <div>
-            <label for="visibility">公開範囲</label>
-            <select id="visibility">
-              <option value="public">全体公開</option>
-              <option value="url">URL共有</option>
-            </select>
-          </div>
-        </div>
-        <div class="actions actions--two">
-          <button id="presetBtn">サンプル軸を投入</button>
-          <button id="saveAxis">軸を保存</button>
-        </div>
-        <p id="saveMsg" class="save-msg" role="status" aria-live="polite"></p>
-      </section>
-
-      <!-- Add Oshi -->
-      <section class="panel" aria-label="推し追加">
-        <h2>推しを追加</h2>
-        <div class="row">
-          <div>
-            <label for="oshiName">名前</label>
-            <input id="oshiName" />
-          </div>
-          <div>
-            <label for="oshiX">X(-100~100)</label>
-            <input id="oshiX" type="number" min="-100" max="100" value="0" />
-          </div>
-        </div>
-        <div class="row">
-          <div>
-            <label for="oshiY">Y(-100~100)</label>
-            <input id="oshiY" type="number" min="-100" max="100" value="0" />
-          </div>
-          <div>
-            <label for="oshiTags">タグ（カンマ区切り）</label>
-            <input id="oshiTags" placeholder="沼, てぇてぇ" />
-          </div>
-        </div>
-        <label for="oshiImage">画像（jpg / png / webp, 512KBまで）</label>
-        <input id="oshiImage" type="file" accept="image/jpeg,image/png,image/webp" />
-        <input id="oshiImageData" type="hidden" />
-        <img id="oshiImagePreview" class="image-preview hidden" alt="" />
-        <p id="oshiImageError" class="error-msg" role="alert" aria-live="assertive"></p>
-        <button id="addOshi">追加</button>
-      </section>
-    </div>
-
-    <!-- ===== MAP Section (full width) ===== -->
+    <!-- ===== MAP Section (primary) ===== -->
     <section class="panel" aria-label="推し軸マップ">
       <h2>MAP</h2>
       <div id="mapWrap" role="img" aria-label="推しの2次元マップ">
         <svg id="map" viewBox="0 0 600 600" aria-hidden="true"></svg>
       </div>
-      <p class="hint">💡 ドラッグで推しの位置を調整できるよ</p>
+      <p class="hint">💡 ドラッグで推しの位置を調整 ／ 軸ラベルをダブルクリックで編集</p>
+      <button id="addOshiBtn" class="add-oshi-btn" aria-label="推しを追加">＋ 推しを追加</button>
       <div class="actions actions--three">
         <button id="shareBtn" aria-label="共有リンクを作成">共有リンクを作る</button>
         <button id="copyBtn" aria-label="共有URLをクリップボードにコピー">URLをコピー</button>
@@ -122,6 +47,29 @@
     </section>
   </main>
 
-  <script type="module" src="app.js?v=20260222s"></script>
+  <!-- ===== Add Oshi Dialog ===== -->
+  <dialog id="addOshiDialog" class="oshi-dialog">
+    <form method="dialog">
+      <h3>推しを追加</h3>
+      <label for="dlgOshiName">名前（必須）</label>
+      <input id="dlgOshiName" placeholder="推しの名前" required />
+      <label for="dlgOshiImage">画像（任意・512KBまで）</label>
+      <div class="image-pick-row">
+        <button type="button" id="dlgImageBtn" class="image-pick-btn">📷 画像を選択</button>
+        <input id="dlgOshiImage" type="file" accept="image/jpeg,image/png,image/webp" class="hidden" />
+        <input id="dlgOshiImageData" type="hidden" />
+      </div>
+      <img id="dlgImagePreview" class="image-preview hidden" alt="" />
+      <p id="dlgImageError" class="error-msg" role="alert" aria-live="assertive"></p>
+      <label for="dlgOshiTags">タグ（任意・カンマ区切り）</label>
+      <input id="dlgOshiTags" placeholder="沼, てぇてぇ" />
+      <div class="dialog-actions">
+        <button type="button" id="dlgAddBtn" class="dlg-primary">追加</button>
+        <button type="button" id="dlgCancelBtn" class="dlg-cancel">キャンセル</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script type="module" src="app.js?v=20260223a"></script>
 </body>
 </html>

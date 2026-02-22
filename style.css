@@ -80,14 +80,8 @@ main {
   flex-direction: column;
   gap: 16px;
   padding: 18px;
-  max-width: 1360px;
+  max-width: 800px;
   margin: 0 auto;
-}
-
-.controls {
-  display: grid;
-  gap: 16px;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
 }
 
 /* --- Panel (glassmorphism) --- */
@@ -158,22 +152,14 @@ button:focus-visible {
 }
 
 /* Primary buttons */
-#saveAxis,
-#addOshi,
 #shareBtn {
   background: var(--color-btn-pri);
   border-color: var(--color-btn-bdr);
 }
 
-/* --- Grid Row --- */
-.row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
-
 /* --- MAP Container --- */
 #mapWrap {
+  position: relative;
   width: 100%;
   max-width: 720px;
   margin: 0 auto;
@@ -191,6 +177,51 @@ button:focus-visible {
   cursor: default;
 }
 
+/* --- Inline Label Edit Input --- */
+.inline-label-input {
+  position: absolute;
+  z-index: 10;
+  padding: 2px 6px;
+  font-size: 12px;
+  font-family: var(--font-stack);
+  background: var(--color-input-bg);
+  border: 1px solid var(--color-accent);
+  border-radius: 4px;
+  color: var(--color-text);
+  box-shadow: 0 0 8px rgba(122, 162, 255, 0.3);
+  width: auto;
+  min-width: 60px;
+}
+
+/* Editable SVG labels */
+.editable-label {
+  cursor: pointer;
+}
+
+.editable-label:hover {
+  fill: var(--color-accent);
+}
+
+/* --- Add Oshi Button --- */
+.add-oshi-btn {
+  display: block;
+  width: auto;
+  margin: 12px auto 4px;
+  padding: 12px 32px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  background: var(--color-btn-pri);
+  border: 1px solid var(--color-btn-bdr);
+  border-radius: 999px;
+  color: var(--color-text);
+  letter-spacing: 0.02em;
+}
+
+.add-oshi-btn:hover {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 16px rgba(122, 162, 255, 0.25);
+}
+
 /* --- Action Button Groups --- */
 .actions {
   display: grid;
@@ -200,10 +231,6 @@ button:focus-visible {
 
 .actions--three {
   grid-template-columns: 1fr 1fr 1fr;
-}
-
-.actions--two {
-  grid-template-columns: 1fr 1fr;
 }
 
 /* Delete share button – compact outline style */
@@ -246,10 +273,6 @@ textarea {
   margin: 8px 2px 0;
   color: var(--color-muted);
   font-size: 0.86rem;
-}
-
-.hint--warn {
-  color: var(--color-warn);
 }
 
 .error-msg {
@@ -398,6 +421,73 @@ li {
   stroke: var(--color-warn);
 }
 
+/* --- Add Oshi Dialog --- */
+.oshi-dialog {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  background: linear-gradient(180deg, #141d31ee 0%, #0e1525ee 100%);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  color: var(--color-text);
+  padding: 24px;
+  max-width: 400px;
+  width: 90vw;
+  box-shadow: 0 20px 60px #000000aa;
+}
+
+.oshi-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.oshi-dialog h3 {
+  margin: 0 0 16px;
+  font-size: 1.4rem;
+}
+
+.oshi-dialog label {
+  margin-top: 12px;
+}
+
+.oshi-dialog input[type="text"],
+.oshi-dialog input:not([type]) {
+  margin-bottom: 4px;
+}
+
+.image-pick-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.image-pick-btn {
+  width: auto;
+  padding: 8px 16px;
+  font-size: 0.9rem;
+  background: var(--color-btn-bg);
+  border: 1px solid var(--color-input-bdr);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+}
+
+.dialog-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.dlg-primary {
+  background: var(--color-btn-pri);
+  border-color: var(--color-btn-bdr);
+}
+
+.dlg-cancel {
+  background: transparent;
+  border-color: var(--color-input-bdr);
+}
+
 /* --- Responsive --- */
 @media (max-width: 600px) {
   h1 {
@@ -416,15 +506,7 @@ li {
     font-size: 1.5rem;
   }
 
-  .controls {
-    grid-template-columns: 1fr;
-  }
-
   .actions--three {
-    grid-template-columns: 1fr;
-  }
-
-  .row {
     grid-template-columns: 1fr;
   }
 }

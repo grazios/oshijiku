@@ -29,6 +29,7 @@ const state = {
    ---------------------------------------------------------- */
 const $ = (id) => document.getElementById(id);
 const map = $('map');
+const mapWrap = $('mapWrap');
 
 function createSvgEl(tag, attrs = {}, textContent = '') {
   const el = document.createElementNS(SVG_NS, tag);
@@ -47,7 +48,6 @@ function pointerToSvg(evt) {
   if (!_svgPoint) _svgPoint = map.createSVGPoint();
   _svgPoint.x = evt.clientX;
   _svgPoint.y = evt.clientY;
-  // SF-1: getScreenCTM() null check
   const ctm = map.getScreenCTM();
   if (!ctm) return null;
   return _svgPoint.matrixTransform(ctm.inverse());
@@ -108,19 +108,23 @@ function drawAxes() {
 function drawLabels() {
   const mid = MAP_SIZE / 2;
   const labels = [
-    { text: state.axis.xMin,  x: MAP_PAD + 5,            y: mid - 8,                anchor: 'start' },
-    { text: state.axis.xMax,  x: MAP_SIZE - MAP_PAD - 5,  y: mid - 8,               anchor: 'end' },
-    { text: state.axis.yMax,  x: mid,                     y: MAP_PAD - 8,            anchor: 'middle' },
-    { text: state.axis.yMin,  x: mid,                     y: MAP_SIZE - MAP_PAD + 20, anchor: 'middle' },
+    { field: 'xMin', text: state.axis.xMin,  x: MAP_PAD + 5,            y: mid - 8,                anchor: 'start' },
+    { field: 'xMax', text: state.axis.xMax,  x: MAP_SIZE - MAP_PAD - 5,  y: mid - 8,               anchor: 'end' },
+    { field: 'yMax', text: state.axis.yMax,  x: mid,                     y: MAP_PAD - 8,            anchor: 'middle' },
+    { field: 'yMin', text: state.axis.yMin,  x: mid,                     y: MAP_SIZE - MAP_PAD + 20, anchor: 'middle' },
   ];
   for (const l of labels) {
-    map.appendChild(createSvgEl('text', {
-      class: 'label axis-label', x: l.x, y: l.y, 'text-anchor': l.anchor,
-    }, l.text));
+    const el = createSvgEl('text', {
+      class: 'label axis-label editable-label', x: l.x, y: l.y, 'text-anchor': l.anchor,
+      'data-axis-field': l.field,
+    }, l.text);
+    map.appendChild(el);
   }
-  map.appendChild(createSvgEl('text', {
-    class: 'label map-title', x: mid, y: MAP_SIZE - 6, 'text-anchor': 'middle',
-  }, state.axis.title || '推し軸MAP'));
+  const titleEl = createSvgEl('text', {
+    class: 'label map-title editable-label', x: mid, y: MAP_SIZE - 6, 'text-anchor': 'middle',
+    'data-axis-field': 'title',
+  }, state.axis.title || '推し軸MAP');
+  map.appendChild(titleEl);
 }
 
 function drawEmptyState() {
@@ -128,11 +132,11 @@ function drawEmptyState() {
   map.appendChild(createSvgEl('text', {
     class: 'label', x: mid, y: mid - 10, 'text-anchor': 'middle',
     fill: '#9fb0d4', 'font-size': '14',
-  }, 'まず軸を設定して、'));
+  }, '軸ラベルをダブルクリックで編集、'));
   map.appendChild(createSvgEl('text', {
     class: 'label', x: mid, y: mid + 14, 'text-anchor': 'middle',
     fill: '#9fb0d4', 'font-size': '14',
-  }, '推しを追加してみよう！'));
+  }, '＋ボタンで推しを追加！'));
 }
 
 function drawOshi(oshi, idx) {
@@ -185,6 +189,72 @@ function draw() {
 }
 
 /* ----------------------------------------------------------
+   Inline Label Editing (double-click on axis labels / title)
+   ---------------------------------------------------------- */
+function startInlineEdit(svgTextEl) {
+  const field = svgTextEl.getAttribute('data-axis-field');
+  if (!field) return;
+
+  // Get position of SVG text element relative to mapWrap
+  const wrapRect = mapWrap.getBoundingClientRect();
+  const textRect = svgTextEl.getBoundingClientRect();
+
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'inline-label-input';
+  input.value = field === 'title' ? (state.axis.title || '') : (state.axis[field] || '');
+
+  // Position
+  const left = textRect.left - wrapRect.left;
+  const top = textRect.top - wrapRect.top;
+  input.style.left = `${left}px`;
+  input.style.top = `${top - 4}px`;
+  input.style.width = `${Math.max(textRect.width + 40, 80)}px`;
+
+  // Anchor alignment
+  const anchor = svgTextEl.getAttribute('text-anchor');
+  if (anchor === 'end') {
+    input.style.left = 'auto';
+    input.style.right = `${wrapRect.right - textRect.right}px`;
+    input.style.textAlign = 'right';
+  } else if (anchor === 'middle') {
+    input.style.left = `${left + textRect.width / 2}px`;
+    input.style.transform = 'translateX(-50%)';
+    input.style.textAlign = 'center';
+  }
+
+  function commit() {
+    const val = input.value.trim();
+    if (field === 'title') {
+      state.axis.title = val;
+    } else {
+      state.axis[field] = val || (field.startsWith('x') ? (field === 'xMin' ? '左' : '右') : (field === 'yMin' ? '下' : '上'));
+    }
+    saveToStorage();
+    input.remove();
+    draw();
+  }
+
+  input.addEventListener('blur', commit);
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+    if (e.key === 'Escape') { input.remove(); }
+  });
+
+  mapWrap.appendChild(input);
+  input.focus();
+  input.select();
+}
+
+map.addEventListener('dblclick', (evt) => {
+  const target = evt.target.closest('.editable-label');
+  if (target) {
+    evt.preventDefault();
+    startInlineEdit(target);
+  }
+});
+
+/* ----------------------------------------------------------
    Drag & Drop
    ---------------------------------------------------------- */
 let dragIdx = -1;
@@ -208,22 +278,19 @@ function handlePointerDown(evt) {
 function handlePointerMove(evt) {
   if (dragIdx < 0 || !dragG) return;
   const pt = pointerToSvg(evt);
-  if (!pt) return; // SF-1: getScreenCTM() returned null
+  if (!pt) return;
   const newX = clamp(fromSvgX(pt.x), -100, 100);
   const newY = clamp(fromSvgY(pt.y), -100, 100);
   state.oshis[dragIdx].x = newX;
   state.oshis[dragIdx].y = newY;
 
-  // Transform-only approach – no draw() during drag
   const dx = toSvgX(newX) - dragOrigSvgX;
   const dy = toSvgY(newY) - dragOrigSvgY;
   dragG.setAttribute('transform', `translate(${dx},${dy})`);
-  // MF-1: renderOshiList() removed – list updates on pointerup via draw()
 }
 
 function handlePointerEnd() {
   if (dragIdx < 0) return;
-  // SF-2: explicitly remove dragging class before draw()
   if (dragG) dragG.classList.remove('dragging');
   dragIdx = -1;
   dragG = null;
@@ -278,48 +345,47 @@ function renderOshiList() {
 }
 
 /* ----------------------------------------------------------
-   UI ↔ State Sync
+   Add Oshi Dialog
    ---------------------------------------------------------- */
-function syncInputsFromState() {
-  $('title').value = state.axis.title;
-  $('xMin').value = state.axis.xMin;
-  $('xMax').value = state.axis.xMax;
-  $('yMin').value = state.axis.yMin;
-  $('yMax').value = state.axis.yMax;
-  $('visibility').value = state.axis.visibility;
-}
+const dialog = $('addOshiDialog');
 
-/* ----------------------------------------------------------
-   Image Picker
-   ---------------------------------------------------------- */
-function setImageError(msg) {
-  $('oshiImageError').textContent = msg;
-}
+$('addOshiBtn').onclick = () => {
+  // Reset fields
+  $('dlgOshiName').value = '';
+  $('dlgOshiTags').value = '';
+  $('dlgOshiImage').value = '';
+  $('dlgOshiImageData').value = '';
+  $('dlgImagePreview').classList.add('hidden');
+  $('dlgImagePreview').removeAttribute('src');
+  $('dlgImageError').textContent = '';
+  dialog.showModal();
+};
 
-function resetImagePicker(clearInput = false) {
-  const preview = $('oshiImagePreview');
-  preview.removeAttribute('src');
-  preview.classList.add('hidden');
-  preview.alt = '';
-  $('oshiImageData').value = '';
-  setImageError('');
-  if (clearInput) $('oshiImage').value = '';
-}
+// Image button triggers file input
+$('dlgImageBtn').onclick = () => $('dlgOshiImage').click();
 
-$('oshiImage').addEventListener('change', () => {
-  const file = $('oshiImage').files?.[0];
+$('dlgOshiImage').addEventListener('change', () => {
+  const file = $('dlgOshiImage').files?.[0];
+  const preview = $('dlgImagePreview');
+  const errEl = $('dlgImageError');
   if (!file) {
-    resetImagePicker();
+    $('dlgOshiImageData').value = '';
+    preview.classList.add('hidden');
+    errEl.textContent = '';
     return;
   }
   if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
-    resetImagePicker(true);
-    setImageError('画像は jpg / png / webp のみ対応です');
+    $('dlgOshiImage').value = '';
+    $('dlgOshiImageData').value = '';
+    preview.classList.add('hidden');
+    errEl.textContent = '画像は jpg / png / webp のみ対応です';
     return;
   }
   if (file.size > MAX_IMAGE_BYTES) {
-    resetImagePicker(true);
-    setImageError('画像サイズは 512KB 以下にしてください');
+    $('dlgOshiImage').value = '';
+    $('dlgOshiImageData').value = '';
+    preview.classList.add('hidden');
+    errEl.textContent = '画像サイズは 512KB 以下にしてください';
     return;
   }
 
@@ -327,89 +393,52 @@ $('oshiImage').addEventListener('change', () => {
   reader.onload = () => {
     const result = typeof reader.result === 'string' ? reader.result : '';
     if (!IMAGE_DATA_RE.test(result)) {
-      resetImagePicker(true);
-      setImageError('画像の読み込みに失敗しました');
+      errEl.textContent = '画像の読み込みに失敗しました';
       return;
     }
-    $('oshiImageData').value = result;
-    const preview = $('oshiImagePreview');
+    $('dlgOshiImageData').value = result;
     preview.src = result;
     preview.alt = '追加前プレビュー';
     preview.classList.remove('hidden');
-    setImageError('');
+    errEl.textContent = '';
   };
-  reader.onerror = () => {
-    resetImagePicker(true);
-    setImageError('画像の読み込みに失敗しました');
-  };
+  reader.onerror = () => { errEl.textContent = '画像の読み込みに失敗しました'; };
   reader.readAsDataURL(file);
 });
 
-/* ----------------------------------------------------------
-   Axis Settings
-   ---------------------------------------------------------- */
-$('presetBtn').onclick = () => {
-  $('title').value = '裏切る / 裏切らない × 信頼できない / 信頼できる';
-  $('xMin').value = '裏切る';
-  $('xMax').value = '裏切らない';
-  $('yMin').value = '信頼できない';
-  $('yMax').value = '信頼できる';
-};
-
-$('saveAxis').onclick = () => {
-  state.axis = {
-    title:      $('title').value.trim(),
-    xMin:       $('xMin').value.trim() || '左',
-    xMax:       $('xMax').value.trim() || '右',
-    yMin:       $('yMin').value.trim() || '下',
-    yMax:       $('yMax').value.trim() || '上',
-    visibility: $('visibility').value,
-  };
-  saveToStorage();
-  draw();
-  $('saveMsg').textContent = '軸を保存したよ！';
-  setTimeout(() => { $('saveMsg').textContent = ''; }, 1400);
-};
-
-/* ----------------------------------------------------------
-   Add Oshi
-   ---------------------------------------------------------- */
-function addOshi() {
-  const name = $('oshiName').value.trim();
-  const result = validateOshiInput(name, $('oshiX').value || 0, $('oshiY').value || 0);
-  if (!result.valid) {
-    alert(result.error);
+$('dlgAddBtn').onclick = () => {
+  const name = $('dlgOshiName').value.trim();
+  if (!name) {
+    alert('名前入れて〜');
     return;
-  }
-
-  if (result.clamped) {
-    alert('座標は-100〜100に補正したよ');
   }
 
   state.oshis.push({
     name,
-    x: result.x,
-    y: result.y,
-    tags: parseTags($('oshiTags').value),
-    imageData: $('oshiImageData').value || '',
+    x: 0,
+    y: 0,
+    tags: parseTags($('dlgOshiTags').value),
+    imageData: $('dlgOshiImageData').value || '',
   });
 
-  $('oshiName').value = '';
-  $('oshiTags').value = '';
-  resetImagePicker(true);
   saveToStorage();
   draw();
-}
+  dialog.close();
+};
 
-$('addOshi').onclick = addOshi;
+$('dlgCancelBtn').onclick = () => dialog.close();
 
-['oshiName', 'oshiTags', 'oshiX', 'oshiY'].forEach((id) => {
-  $(id).addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      addOshi();
-    }
-  });
+// Close on backdrop click
+dialog.addEventListener('click', (e) => {
+  if (e.target === dialog) dialog.close();
+});
+
+// Enter to submit in dialog
+$('dlgOshiName').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); $('dlgAddBtn').click(); }
+});
+$('dlgOshiTags').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); $('dlgAddBtn').click(); }
 });
 
 /* ----------------------------------------------------------
@@ -433,7 +462,6 @@ $('shareBtn').onclick = async () => {
     $('shareUrl').value = json.url;
     updateShareButtons();
 
-    // Save delete_key to localStorage
     const keys = JSON.parse(localStorage.getItem('oshijiku_delete_keys') || '{}');
     keys[json.share_id] = json.delete_key;
     localStorage.setItem('oshijiku_delete_keys', JSON.stringify(keys));
@@ -558,7 +586,6 @@ function loadSampleData() {
   const data = params.get('data');
 
   if (shareParam) {
-    // DB shared map
     try {
       const res = await fetch(`/api/load.php?id=${encodeURIComponent(shareParam)}`);
       const json = await res.json();
@@ -577,7 +604,6 @@ function loadSampleData() {
       loadFromStorage();
     }
   } else if (data) {
-    // Legacy base64 URL format
     try {
       const json = decodeURIComponent(escape(atob(data)));
       applySanitized(JSON.parse(json));
@@ -593,8 +619,6 @@ function loadSampleData() {
     }
   }
 
-  syncInputsFromState();
   draw();
-  resetImagePicker();
   updateShareButtons();
 })();
