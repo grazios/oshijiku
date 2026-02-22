@@ -22,7 +22,11 @@ header{
 }
 h1{margin:0 0 8px;font-size:2.8rem;letter-spacing:.04em;line-height:1.05;background:linear-gradient(90deg,#ffffff 0%,#a8c4ff 45%,#7ee3a7 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
 header p{margin:0;color:var(--muted);font-size:1.1rem}
-main{display:grid;gap:16px;padding:18px;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));max-width:1360px;margin:auto}
+
+/* layout: MAP is full-width, rest below */
+main{display:flex;flex-direction:column;gap:16px;padding:18px;max-width:1360px;margin:auto}
+.controls{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+
 .panel{
   background:linear-gradient(180deg,#141d31cc 0%,#101827cc 100%);
   backdrop-filter: blur(8px);
@@ -41,8 +45,21 @@ button{cursor:pointer;font-weight:700;transition:.15s ease}
 button:hover{transform:translateY(-1px);border-color:var(--accent);background:#1a2d52}
 button#saveAxis,button#addOshi,button#shareBtn{background:linear-gradient(180deg,#1b376f,#13274d);border-color:#4d71b8}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-#mapWrap{width:100%;aspect-ratio:1;background:#091224;border:1px solid #2d4576;border-radius:10px;overflow:hidden}
-#map{width:100%;height:100%}
+
+/* MAP - full width, bigger */
+#mapWrap{
+  width:100%;
+  max-width:720px;
+  margin:0 auto;
+  aspect-ratio:1;
+  background:#091224;
+  border:1px solid #2d4576;
+  border-radius:12px;
+  overflow:hidden;
+  touch-action:none;
+}
+#map{width:100%;height:100%;cursor:default}
+
 .actions{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px}
 .actions.single{grid-template-columns:1fr 1fr}
 #copyBtn.copied{border-color:var(--accent-2);color:var(--accent-2)}
@@ -58,9 +75,21 @@ li{margin:6px 0;color:#d6e1f7}
 .del-btn{width:auto;padding:4px 10px;border-radius:8px;background:#1a1024;border:1px solid #5a3a6a;color:#ff9da1;font-size:.85rem;flex-shrink:0;cursor:pointer}
 .del-btn:hover{background:#2d1232;border-color:#ff9da1}
 .oshi-thumb{width:42px;height:42px;border-radius:8px;object-fit:cover;border:1px solid #3b4d75;flex-shrink:0}
-.dot{fill:#6ee7ff;stroke:#042b3a;stroke-width:2;transition:r .15s ease}
-.dot-hover{fill:transparent;cursor:pointer}
-.oshi-dot:hover .dot{r:11;fill:#a4f0ff;filter:drop-shadow(0 0 6px #6ee7ff88)}
+
+/* SVG elements */
+.grid{stroke:#1a2542;stroke-width:1}
 .axis{stroke:#3d4a67;stroke-width:2}
 .label{fill:#cdd8eb;font-size:13px}
+.axis-label{fill:#8a9fc0;font-size:12px}
+.oshi-label{fill:#e7edf9;font-size:12px;font-weight:600}
 .map-title{fill:#9fb0d4;font-size:11px}
+
+/* dots */
+.dot{fill:#6ee7ff;stroke:#042b3a;stroke-width:2;transition:r .15s ease}
+.dot-hover{fill:transparent;cursor:grab}
+.img-ring{fill:none;stroke:#6ee7ff;stroke-width:2;transition:stroke .15s ease}
+.oshi-dot:hover .dot{r:11;fill:#a4f0ff;filter:drop-shadow(0 0 6px #6ee7ff88)}
+.oshi-dot:hover .img-ring{stroke:#a4f0ff;filter:drop-shadow(0 0 6px #6ee7ff88)}
+.oshi-dot.dragging .dot-hover{cursor:grabbing}
+.oshi-dot.dragging .dot{fill:#ffd27a;stroke:#5a3a00}
+.oshi-dot.dragging .img-ring{stroke:#ffd27a}

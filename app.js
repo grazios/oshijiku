@@ -1,6 +1,9 @@
 const MAX_IMAGE_BYTES = 512 * 1024;
 const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const SVG_NS = 'http://www.w3.org/2000/svg';
+const MAP_SIZE = 600;
+const MAP_PAD = 50;
+const MAP_RANGE = MAP_SIZE - MAP_PAD * 2; // 500
 
 const state = {
   axis: { title: '', xMin: '左', xMax: '右', yMin: '下', yMax: '上', visibility: 'public' },
@@ -10,13 +13,13 @@ const state = {
 const $ = id => document.getElementById(id);
 const map = $('map');
 
+/* --- persistence --- */
 function saveLocal() {
   localStorage.setItem('oshijiku_state', JSON.stringify(state));
 }
 
 function sanitizeLoadedState(parsed) {
   if (!parsed || typeof parsed !== 'object') return;
-
   if (parsed.axis && typeof parsed.axis === 'object') {
     state.axis = {
       title: String(parsed.axis.title ?? ''),
@@ -27,7 +30,6 @@ function sanitizeLoadedState(parsed) {
       visibility: parsed.axis.visibility === 'url' ? 'url' : 'public'
     };
   }
-
   if (Array.isArray(parsed.oshis)) {
     state.oshis = parsed.oshis
       .map(o => ({
@@ -49,17 +51,15 @@ function sanitizeLoadedState(parsed) {
 function loadLocal() {
   const s = localStorage.getItem('oshijiku_state');
   if (!s) return;
-  try {
-    const parsed = JSON.parse(s);
-    sanitizeLoadedState(parsed);
-  } catch (e) {
-    console.warn(e);
-  }
+  try { sanitizeLoadedState(JSON.parse(s)); } catch (e) { console.warn(e); }
 }
 
-function toCoord(v) {
-  return 300 + (Number(v) / 100) * 250;
-}
+/* --- coord helpers --- */
+function toSvgX(v) { return MAP_SIZE / 2 + (Number(v) / 100) * (MAP_RANGE / 2); }
+function toSvgY(v) { return MAP_SIZE / 2 - (Number(v) / 100) * (MAP_RANGE / 2); }
+function fromSvgX(px) { return Math.round(((px - MAP_SIZE / 2) / (MAP_RANGE / 2)) * 100); }
+function fromSvgY(px) { return Math.round(((MAP_SIZE / 2 - px) / (MAP_RANGE / 2)) * 100); }
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 
 function createSvgEl(name, attrs = {}, text = '') {
   const el = document.createElementNS(SVG_NS, name);
@@ -68,34 +68,117 @@ function createSvgEl(name, attrs = {}, text = '') {
   return el;
 }
 
+/* --- SVG coordinate from pointer event --- */
+let svgPt = null;
+function svgCoord(evt) {
+  if (!svgPt) svgPt = map.createSVGPoint();
+  svgPt.x = evt.clientX;
+  svgPt.y = evt.clientY;
+  const ctm = map.getScreenCTM().inverse();
+  return svgPt.matrixTransform(ctm);
+}
+
+/* --- draw --- */
 function draw() {
   map.textContent = '';
 
-  map.appendChild(createSvgEl('line', { class: 'axis', x1: 50, y1: 300, x2: 550, y2: 300 }));
-  map.appendChild(createSvgEl('line', { class: 'axis', x1: 300, y1: 50, x2: 300, y2: 550 }));
-  map.appendChild(createSvgEl('text', { class: 'label', x: 55, y: 292, 'text-anchor': 'start' }, state.axis.xMin));
-  map.appendChild(createSvgEl('text', { class: 'label', x: 545, y: 292, 'text-anchor': 'end' }, state.axis.xMax));
-  map.appendChild(createSvgEl('text', { class: 'label', x: 300, y: 42, 'text-anchor': 'middle' }, state.axis.yMax));
-  map.appendChild(createSvgEl('text', { class: 'label', x: 300, y: 570, 'text-anchor': 'middle' }, state.axis.yMin));
-  map.appendChild(createSvgEl('text', { class: 'label map-title', x: 300, y: 594, 'text-anchor': 'middle' }, state.axis.title || '推し軸MAP'));
+  // grid lines (subtle)
+  for (let v = -50; v <= 50; v += 50) {
+    if (v === 0) continue;
+    const gx = toSvgX(v), gy = toSvgY(v);
+    map.appendChild(createSvgEl('line', { class: 'grid', x1: gx, y1: MAP_PAD, x2: gx, y2: MAP_SIZE - MAP_PAD }));
+    map.appendChild(createSvgEl('line', { class: 'grid', x1: MAP_PAD, y1: gy, x2: MAP_SIZE - MAP_PAD, y2: gy }));
+  }
 
-  state.oshis.forEach(o => {
-    const x = toCoord(o.x);
-    const y = toCoord(-o.y);
+  // axes
+  map.appendChild(createSvgEl('line', { class: 'axis', x1: MAP_PAD, y1: MAP_SIZE / 2, x2: MAP_SIZE - MAP_PAD, y2: MAP_SIZE / 2 }));
+  map.appendChild(createSvgEl('line', { class: 'axis', x1: MAP_SIZE / 2, y1: MAP_PAD, x2: MAP_SIZE / 2, y2: MAP_SIZE - MAP_PAD }));
+
+  // labels
+  map.appendChild(createSvgEl('text', { class: 'label axis-label', x: MAP_PAD + 5, y: MAP_SIZE / 2 - 8, 'text-anchor': 'start' }, state.axis.xMin));
+  map.appendChild(createSvgEl('text', { class: 'label axis-label', x: MAP_SIZE - MAP_PAD - 5, y: MAP_SIZE / 2 - 8, 'text-anchor': 'end' }, state.axis.xMax));
+  map.appendChild(createSvgEl('text', { class: 'label axis-label', x: MAP_SIZE / 2, y: MAP_PAD - 8, 'text-anchor': 'middle' }, state.axis.yMax));
+  map.appendChild(createSvgEl('text', { class: 'label axis-label', x: MAP_SIZE / 2, y: MAP_SIZE - MAP_PAD + 20, 'text-anchor': 'middle' }, state.axis.yMin));
+  map.appendChild(createSvgEl('text', { class: 'label map-title', x: MAP_SIZE / 2, y: MAP_SIZE - 6, 'text-anchor': 'middle' }, state.axis.title || '推し軸MAP'));
+
+  // oshis
+  state.oshis.forEach((o, idx) => {
+    const x = toSvgX(o.x);
+    const y = toSvgY(o.y);
     const tags = o.tags.length ? `\nタグ: ${o.tags.map(t => '#' + t).join(' ')}` : '';
-    const tip = `${o.name} (${o.x}, ${o.y})${tags}`;
+    const tip = `${o.name} (${o.x}, ${o.y})${tags}\n※ドラッグで移動`;
 
-    const g = createSvgEl('g', { class: 'oshi-dot' });
+    const g = createSvgEl('g', { class: 'oshi-dot', 'data-idx': idx });
     g.appendChild(createSvgEl('title', {}, tip));
-    g.appendChild(createSvgEl('circle', { class: 'dot-hover', cx: x, cy: y, r: 18 }));
-    g.appendChild(createSvgEl('circle', { class: 'dot', cx: x, cy: y, r: 8 }));
-    g.appendChild(createSvgEl('text', { class: 'label', x: x + 12, y: y - 12 }, o.name));
+
+    if (o.imageData) {
+      // clip circle for image
+      const clipId = `clip-${idx}`;
+      const defs = createSvgEl('defs');
+      const clipPath = createSvgEl('clipPath', { id: clipId });
+      clipPath.appendChild(createSvgEl('circle', { cx: x, cy: y, r: 20 }));
+      defs.appendChild(clipPath);
+      g.appendChild(defs);
+
+      // image thumbnail
+      g.appendChild(createSvgEl('image', {
+        href: o.imageData, x: x - 20, y: y - 20, width: 40, height: 40,
+        'clip-path': `url(#${clipId})`, preserveAspectRatio: 'xMidYMid slice'
+      }));
+      // border ring
+      g.appendChild(createSvgEl('circle', { class: 'img-ring', cx: x, cy: y, r: 20 }));
+      // invisible hit area
+      g.appendChild(createSvgEl('circle', { class: 'dot-hover', cx: x, cy: y, r: 24 }));
+    } else {
+      g.appendChild(createSvgEl('circle', { class: 'dot-hover', cx: x, cy: y, r: 18 }));
+      g.appendChild(createSvgEl('circle', { class: 'dot', cx: x, cy: y, r: 8 }));
+    }
+
+    g.appendChild(createSvgEl('text', { class: 'label oshi-label', x: x, y: o.imageData ? y - 26 : y - 14, 'text-anchor': 'middle' }, o.name));
     map.appendChild(g);
   });
 
   renderOshiList();
 }
 
+/* --- drag & drop --- */
+let dragIdx = -1;
+let dragStart = null;
+
+function onPointerDown(evt) {
+  const g = evt.target.closest('.oshi-dot');
+  if (!g) return;
+  dragIdx = Number(g.dataset.idx);
+  dragStart = svgCoord(evt);
+  map.setPointerCapture(evt.pointerId);
+  g.classList.add('dragging');
+  evt.preventDefault();
+}
+
+function onPointerMove(evt) {
+  if (dragIdx < 0) return;
+  const pt = svgCoord(evt);
+  const rawX = fromSvgX(pt.x);
+  const rawY = fromSvgY(pt.y);
+  state.oshis[dragIdx].x = clamp(rawX, -100, 100);
+  state.oshis[dragIdx].y = clamp(rawY, -100, 100);
+  draw();
+}
+
+function onPointerUp(evt) {
+  if (dragIdx < 0) return;
+  dragIdx = -1;
+  dragStart = null;
+  saveLocal();
+  draw();
+}
+
+map.addEventListener('pointerdown', onPointerDown);
+map.addEventListener('pointermove', onPointerMove);
+map.addEventListener('pointerup', onPointerUp);
+map.addEventListener('pointercancel', onPointerUp);
+
+/* --- oshi list --- */
 function renderOshiList() {
   const list = $('oshiList');
   list.textContent = '';
@@ -121,17 +204,14 @@ function renderOshiList() {
     del.className = 'del-btn';
     del.textContent = '✕';
     del.title = `${o.name}を削除`;
-    del.onclick = () => {
-      state.oshis.splice(i, 1);
-      saveLocal();
-      draw();
-    };
+    del.onclick = () => { state.oshis.splice(i, 1); saveLocal(); draw(); };
     li.appendChild(del);
 
     list.appendChild(li);
   });
 }
 
+/* --- UI sync --- */
 function syncInputs() {
   $('title').value = state.axis.title;
   $('xMin').value = state.axis.xMin;
@@ -141,9 +221,8 @@ function syncInputs() {
   $('visibility').value = state.axis.visibility;
 }
 
-function setImageError(msg) {
-  $('oshiImageError').textContent = msg;
-}
+/* --- image picker --- */
+function setImageError(msg) { $('oshiImageError').textContent = msg; }
 
 function resetImagePicker(clearInput = false) {
   const preview = $('oshiImagePreview');
@@ -157,32 +236,14 @@ function resetImagePicker(clearInput = false) {
 
 $('oshiImage').addEventListener('change', () => {
   const file = $('oshiImage').files?.[0];
-  if (!file) {
-    resetImagePicker();
-    return;
-  }
-
-  if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
-    resetImagePicker(true);
-    setImageError('画像は jpg / png / webp のみ対応です');
-    return;
-  }
-
-  if (file.size > MAX_IMAGE_BYTES) {
-    resetImagePicker(true);
-    setImageError('画像サイズは 512KB 以下にしてください');
-    return;
-  }
+  if (!file) { resetImagePicker(); return; }
+  if (!ALLOWED_IMAGE_TYPES.has(file.type)) { resetImagePicker(true); setImageError('画像は jpg / png / webp のみ対応です'); return; }
+  if (file.size > MAX_IMAGE_BYTES) { resetImagePicker(true); setImageError('画像サイズは 512KB 以下にしてください'); return; }
 
   const reader = new FileReader();
   reader.onload = () => {
     const result = typeof reader.result === 'string' ? reader.result : '';
-    if (!/^data:image\/(jpeg|png|webp);base64,/i.test(result)) {
-      resetImagePicker(true);
-      setImageError('画像の読み込みに失敗しました');
-      return;
-    }
-
+    if (!/^data:image\/(jpeg|png|webp);base64,/i.test(result)) { resetImagePicker(true); setImageError('画像の読み込みに失敗しました'); return; }
     $('oshiImageData').value = result;
     const preview = $('oshiImagePreview');
     preview.src = result;
@@ -190,13 +251,11 @@ $('oshiImage').addEventListener('change', () => {
     preview.classList.remove('hidden');
     setImageError('');
   };
-  reader.onerror = () => {
-    resetImagePicker(true);
-    setImageError('画像の読み込みに失敗しました');
-  };
+  reader.onerror = () => { resetImagePicker(true); setImageError('画像の読み込みに失敗しました'); };
   reader.readAsDataURL(file);
 });
 
+/* --- axis --- */
 $('presetBtn').onclick = () => {
   $('title').value = '裏切る / 裏切らない × 信頼できない / 信頼できる';
   $('xMin').value = '裏切る';
@@ -214,52 +273,40 @@ $('saveAxis').onclick = () => {
     yMax: $('yMax').value.trim() || '上',
     visibility: $('visibility').value
   };
-  saveLocal();
-  draw();
+  saveLocal(); draw();
   $('saveMsg').textContent = '軸を保存したよ！';
   setTimeout(() => { $('saveMsg').textContent = ''; }, 1400);
 };
 
+/* --- add oshi --- */
 function addOshi() {
   const name = $('oshiName').value.trim();
   if (!name) return alert('名前入れて〜');
-
   const rawX = Number($('oshiX').value || 0);
   const rawY = Number($('oshiY').value || 0);
   if (Number.isNaN(rawX) || Number.isNaN(rawY)) return alert('座標は数値で入れてね');
-  const x = Math.max(-100, Math.min(100, rawX));
-  const y = Math.max(-100, Math.min(100, rawY));
+  const x = clamp(rawX, -100, 100);
+  const y = clamp(rawY, -100, 100);
   if (x !== rawX || y !== rawY) alert('座標は-100〜100に補正したよ');
 
-  const imageData = $('oshiImageData').value || '';
   state.oshis.push({
-    name,
-    x,
-    y,
+    name, x, y,
     tags: $('oshiTags').value.split(',').map(s => s.trim()).filter(Boolean),
-    imageData
+    imageData: $('oshiImageData').value || ''
   });
-
   $('oshiName').value = '';
   $('oshiTags').value = '';
   resetImagePicker(true);
-
-  saveLocal();
-  draw();
+  saveLocal(); draw();
 }
 
 $('addOshi').onclick = addOshi;
-$('oshiTags').addEventListener('keydown', e => {
-  if (e.key === 'Enter') {
-    e.preventDefault();
-    addOshi();
-  }
-});
+$('oshiTags').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); addOshi(); } });
 
+/* --- share / fork --- */
 $('shareBtn').onclick = () => {
   const data = btoa(unescape(encodeURIComponent(JSON.stringify(state))));
-  const url = `${location.origin}${location.pathname}?data=${encodeURIComponent(data)}`;
-  $('shareUrl').value = url;
+  $('shareUrl').value = `${location.origin}${location.pathname}?data=${encodeURIComponent(data)}`;
 };
 
 $('copyBtn').onclick = async () => {
@@ -269,35 +316,21 @@ $('copyBtn').onclick = async () => {
     await navigator.clipboard.writeText(url);
     $('copyBtn').classList.add('copied');
     $('copyBtn').textContent = 'コピー済み！';
-    setTimeout(() => {
-      $('copyBtn').classList.remove('copied');
-      $('copyBtn').textContent = 'URLをコピー';
-    }, 1200);
-  } catch {
-    alert('コピーに失敗したよ');
-  }
+    setTimeout(() => { $('copyBtn').classList.remove('copied'); $('copyBtn').textContent = 'URLをコピー'; }, 1200);
+  } catch { alert('コピーに失敗したよ'); }
 };
 
 $('forkBtn').onclick = () => {
-  const fork = structuredClone(state);
-  localStorage.setItem('oshijiku_state', JSON.stringify(fork));
+  localStorage.setItem('oshijiku_state', JSON.stringify(structuredClone(state)));
   alert('Forkしたよ！このまま編集してね');
 };
 
+/* --- init --- */
 (function init() {
   const q = new URLSearchParams(location.search);
   if (q.get('data')) {
-    try {
-      const parsed = JSON.parse(decodeURIComponent(escape(atob(q.get('data')))));
-      sanitizeLoadedState(parsed);
-    } catch (e) {
-      console.warn(e);
-      loadLocal();
-    }
-  } else {
-    loadLocal();
-  }
-  syncInputs();
-  draw();
-  resetImagePicker();
+    try { sanitizeLoadedState(JSON.parse(decodeURIComponent(escape(atob(q.get('data')))))); }
+    catch (e) { console.warn(e); loadLocal(); }
+  } else { loadLocal(); }
+  syncInputs(); draw(); resetImagePicker();
 })();

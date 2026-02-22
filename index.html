@@ -11,7 +11,7 @@
   <meta property="og:url" content="https://oshijiku.com" />
   <meta name="twitter:card" content="summary" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📌</text></svg>" />
-  <link rel="stylesheet" href="style.css?v=20260222f" />
+  <link rel="stylesheet" href="style.css?v=20260222g" />
 </head>
 <body>
   <header>
@@ -20,67 +20,75 @@
   </header>
 
   <main>
-    <section class="panel">
-      <h2>軸設定</h2>
-      <label>タイトル <input id="title" placeholder="例: 裏切る/裏切らない × 信頼できる/できない" /></label>
-      <div class="row">
-        <label>X軸 左 <input id="xMin" placeholder="裏切る" /></label>
-        <label>X軸 右 <input id="xMax" placeholder="裏切らない" /></label>
-      </div>
-      <div class="row">
-        <label>Y軸 下 <input id="yMin" placeholder="信頼できない" /></label>
-        <label>Y軸 上 <input id="yMax" placeholder="信頼できる" /></label>
-      </div>
-      <div class="row">
-        <label>公開範囲
-          <select id="visibility">
-            <option value="public">全体公開</option>
-            <option value="url">URL共有</option>
-          </select>
-        </label>
-      </div>
-      <div class="actions single">
-        <button id="presetBtn">サンプル軸を投入</button>
-        <button id="saveAxis">軸を保存</button>
-      </div>
-      <p id="saveMsg" class="save-msg"></p>
-    </section>
-
-    <section class="panel">
-      <h2>推しを追加</h2>
-      <div class="row">
-        <label>名前 <input id="oshiName" /></label>
-        <label>X(-100~100) <input id="oshiX" type="number" min="-100" max="100" value="0" /></label>
-        <label>Y(-100~100) <input id="oshiY" type="number" min="-100" max="100" value="0" /></label>
-      </div>
-      <label>タグ（カンマ区切り）<input id="oshiTags" placeholder="沼, てぇてぇ" /></label>
-      <label>画像（jpg / png / webp, 512KBまで）<input id="oshiImage" type="file" accept="image/jpeg,image/png,image/webp" /></label>
-      <input id="oshiImageData" type="hidden" />
-      <img id="oshiImagePreview" class="image-preview hidden" alt="" />
-      <p id="oshiImageError" class="error-msg"></p>
-      <button id="addOshi">追加</button>
-    </section>
-
+    <!-- MAP: full width, prominent -->
     <section class="panel">
       <h2>MAP</h2>
-      <p class="hint warn">現在の共有方式: URL埋め込み（DB保存なし）</p>
       <div id="mapWrap">
         <svg id="map" viewBox="0 0 600 600"></svg>
       </div>
+      <p class="hint">💡 ドラッグで推しの位置を調整できるよ</p>
       <div class="actions">
         <button id="shareBtn">共有URLを作る</button>
         <button id="copyBtn">URLをコピー</button>
         <button id="forkBtn">この軸をFork</button>
       </div>
       <textarea id="shareUrl" readonly placeholder="共有URLがここに出る"></textarea>
+      <p class="hint warn">現在の共有方式: URL埋め込み（DB保存なし）</p>
       <p class="hint">URL共有を選ぶと、このリンク経由でForkしやすくなるよ。</p>
     </section>
 
-    <section class="panel">
-      <h2>推し一覧</h2>
-      <ul id="oshiList"></ul>
-    </section>
+    <!-- Controls: side by side below MAP -->
+    <div class="controls">
+      <section class="panel">
+        <h2>軸設定</h2>
+        <label>タイトル <input id="title" placeholder="例: 裏切る/裏切らない × 信頼できる/できない" /></label>
+        <div class="row">
+          <label>X軸 左 <input id="xMin" placeholder="裏切る" /></label>
+          <label>X軸 右 <input id="xMax" placeholder="裏切らない" /></label>
+        </div>
+        <div class="row">
+          <label>Y軸 下 <input id="yMin" placeholder="信頼できない" /></label>
+          <label>Y軸 上 <input id="yMax" placeholder="信頼できる" /></label>
+        </div>
+        <div class="row">
+          <label>公開範囲
+            <select id="visibility">
+              <option value="public">全体公開</option>
+              <option value="url">URL共有</option>
+            </select>
+          </label>
+        </div>
+        <div class="actions single">
+          <button id="presetBtn">サンプル軸を投入</button>
+          <button id="saveAxis">軸を保存</button>
+        </div>
+        <p id="saveMsg" class="save-msg"></p>
+      </section>
+
+      <section class="panel">
+        <h2>推しを追加</h2>
+        <div class="row">
+          <label>名前 <input id="oshiName" /></label>
+          <label>X(-100~100) <input id="oshiX" type="number" min="-100" max="100" value="0" /></label>
+        </div>
+        <div class="row">
+          <label>Y(-100~100) <input id="oshiY" type="number" min="-100" max="100" value="0" /></label>
+          <label>タグ（カンマ区切り）<input id="oshiTags" placeholder="沼, てぇてぇ" /></label>
+        </div>
+        <label>画像（jpg / png / webp, 512KBまで）<input id="oshiImage" type="file" accept="image/jpeg,image/png,image/webp" /></label>
+        <input id="oshiImageData" type="hidden" />
+        <img id="oshiImagePreview" class="image-preview hidden" alt="" />
+        <p id="oshiImageError" class="error-msg"></p>
+        <button id="addOshi">追加</button>
+      </section>
+
+      <section class="panel">
+        <h2>推し一覧</h2>
+        <ul id="oshiList"></ul>
+      </section>
+    </div>
   </main>
 
   <script src="app.js"></script>
 </body>
+</html>
