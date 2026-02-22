@@ -4,40 +4,24 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>推し軸 - 推しを2次元MAPに置いて盛り上がろう</title>
-  <meta name="description" content="推しを2つの軸で分類して2次元MAPに配置。作ったMAPは共有・Forkできる！" />
+  <meta name="description" content="推しを2つの軸で分類して2次元MAPに配置。作ったMAPは共有・コピーできる！" />
   <meta property="og:title" content="推し軸" />
-  <meta property="og:description" content="推しを2次元MAPに置いて、公開/Forkで盛り上がる" />
+  <meta property="og:description" content="推しを2次元MAPに置いて盛り上がろう" />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://oshijiku.com" />
+  <meta property="og:image" content="https://oshijiku.com/ogp.png" />
   <meta name="twitter:card" content="summary" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📌</text></svg>" />
-  <link rel="stylesheet" href="style.css?v=20260222r" />
+  <link rel="stylesheet" href="style.css?v=20260222s" />
 </head>
 <body>
   <header role="banner">
     <h1>推し軸</h1>
-    <p>推しを2次元MAPに置いて、公開/Forkで盛り上がる</p>
+    <p>推しを2次元MAPに置いて盛り上がろう</p>
   </header>
 
   <main>
-    <!-- ===== MAP Section ===== -->
-    <section class="panel" aria-label="推し軸マップ">
-      <h2>MAP</h2>
-      <div id="mapWrap" role="img" aria-label="推しの2次元マップ">
-        <svg id="map" viewBox="0 0 600 600" aria-hidden="true"></svg>
-      </div>
-      <p class="hint">💡 ドラッグで推しの位置を調整できるよ</p>
-      <div class="actions actions--three">
-        <button id="shareBtn" aria-label="共有URLを作成">共有URLを作る</button>
-        <button id="copyBtn" aria-label="共有URLをクリップボードにコピー">URLをコピー</button>
-        <button id="forkBtn" aria-label="この軸をForkして編集">この軸をFork</button>
-      </div>
-      <textarea id="shareUrl" readonly placeholder="共有URLがここに出る" aria-label="共有URL"></textarea>
-      <p class="hint hint--warn">現在の共有方式: URL埋め込み（DB保存なし）</p>
-      <p class="hint">URL共有を選ぶと、このリンク経由でForkしやすくなるよ。</p>
-    </section>
-
-    <!-- ===== Controls Grid ===== -->
+    <!-- ===== Controls Grid (軸設定 + 推し追加) ===== -->
     <div class="controls">
       <!-- Axis Settings -->
       <section class="panel" aria-label="軸設定">
@@ -111,15 +95,31 @@
         <p id="oshiImageError" class="error-msg" role="alert" aria-live="assertive"></p>
         <button id="addOshi">追加</button>
       </section>
-
-      <!-- Oshi List -->
-      <section class="panel" aria-label="推し一覧">
-        <h2>推し一覧</h2>
-        <ul id="oshiList" role="list"></ul>
-      </section>
     </div>
+
+    <!-- ===== MAP Section (full width) ===== -->
+    <section class="panel" aria-label="推し軸マップ">
+      <h2>MAP</h2>
+      <div id="mapWrap" role="img" aria-label="推しの2次元マップ">
+        <svg id="map" viewBox="0 0 600 600" aria-hidden="true"></svg>
+      </div>
+      <p class="hint">💡 ドラッグで推しの位置を調整できるよ</p>
+      <div class="actions actions--three">
+        <button id="shareBtn" aria-label="共有リンクを作成">共有リンクを作る</button>
+        <button id="copyBtn" aria-label="共有URLをクリップボードにコピー">URLをコピー</button>
+        <button id="forkBtn" aria-label="コピーして自分用に作る">コピーして自分用に作る</button>
+      </div>
+      <textarea id="shareUrl" readonly placeholder="共有リンクがここに出る" aria-label="共有URL"></textarea>
+      <p class="hint">URLに保存されます（ブラウザのブックマークで残せます）</p>
+    </section>
+
+    <!-- ===== Oshi List ===== -->
+    <section class="panel" aria-label="推し一覧">
+      <h2>推し一覧</h2>
+      <ul id="oshiList" role="list"></ul>
+    </section>
   </main>
 
-  <script src="app.js?v=20260222r"></script>
+  <script src="app.js?v=20260222s"></script>
 </body>
 </html>

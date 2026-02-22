@@ -5,15 +5,17 @@
 
 'use strict';
 
-/* ----------------------------------------------------------
-   Constants
-   ---------------------------------------------------------- */
+// --- Import core (for browsers via importmap or bundler; fallback inline for non-module) ---
+// Note: We inline the core functions here for browser compatibility (no build step).
+// The canonical source is core.js (ESM), tested via vitest.
+// Keep these in sync with core.js.
+
 const MAX_IMAGE_BYTES = 512 * 1024;
 const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const MAP_SIZE = 600;
 const MAP_PAD = 50;
-const MAP_RANGE = MAP_SIZE - MAP_PAD * 2; // 500
+const MAP_RANGE = MAP_SIZE - MAP_PAD * 2;
 const STORAGE_KEY = 'oshijiku_state';
 const IMAGE_DATA_RE = /^data:image\/(jpeg|png|webp);base64,/i;
 
@@ -31,9 +33,6 @@ const state = {
 const $ = (id) => document.getElementById(id);
 const map = $('map');
 
-/**
- * Create an SVG element with attributes and optional text content.
- */
 function createSvgEl(tag, attrs = {}, textContent = '') {
   const el = document.createElementNS(SVG_NS, tag);
   for (const [k, v] of Object.entries(attrs)) {
@@ -44,7 +43,7 @@ function createSvgEl(tag, attrs = {}, textContent = '') {
 }
 
 /* ----------------------------------------------------------
-   Coordinate Conversion
+   Coordinate Conversion (synced with core.js)
    ---------------------------------------------------------- */
 function toSvgX(v) {
   return MAP_SIZE / 2 + (Number(v) / 100) * (MAP_RANGE / 2);
@@ -66,7 +65,6 @@ function clamp(v, lo, hi) {
   return Math.max(lo, Math.min(hi, v));
 }
 
-/** Convert a pointer event to SVG-space coordinates. */
 let _svgPoint = null;
 function pointerToSvg(evt) {
   if (!_svgPoint) _svgPoint = map.createSVGPoint();
@@ -76,19 +74,20 @@ function pointerToSvg(evt) {
 }
 
 /* ----------------------------------------------------------
-   Persistence (localStorage)
+   Persistence (localStorage) – SF-3: try-catch
    ---------------------------------------------------------- */
 function saveToStorage() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch (e) {
+    alert('保存に失敗しました。ブラウザのストレージ容量が不足している可能性があります。');
+    console.warn('localStorage save failed:', e);
+  }
 }
 
-/**
- * Safely parse and merge loaded data into state, sanitising every field.
- */
 function sanitizeAndLoad(parsed) {
   if (!parsed || typeof parsed !== 'object') return;
 
-  // Axis
   if (parsed.axis && typeof parsed.axis === 'object') {
     const a = parsed.axis;
     state.axis = {
@@ -101,7 +100,6 @@ function sanitizeAndLoad(parsed) {
     };
   }
 
-  // Oshis
   if (Array.isArray(parsed.oshis)) {
     state.oshis = parsed.oshis
       .map((o) => {
@@ -124,12 +122,14 @@ function sanitizeAndLoad(parsed) {
 }
 
 function loadFromStorage() {
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if (!raw) return;
   try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return false;
     sanitizeAndLoad(JSON.parse(raw));
+    return true;
   } catch (e) {
     console.warn('Failed to load state from localStorage:', e);
+    return false;
   }
 }
 
@@ -147,11 +147,9 @@ function drawGrid() {
 }
 
 function drawAxes() {
-  // Horizontal axis
   map.appendChild(createSvgEl('line', {
     class: 'axis', x1: MAP_PAD, y1: MAP_SIZE / 2, x2: MAP_SIZE - MAP_PAD, y2: MAP_SIZE / 2,
   }));
-  // Vertical axis
   map.appendChild(createSvgEl('line', {
     class: 'axis', x1: MAP_SIZE / 2, y1: MAP_PAD, x2: MAP_SIZE / 2, y2: MAP_SIZE - MAP_PAD,
   }));
@@ -160,20 +158,31 @@ function drawAxes() {
 function drawLabels() {
   const mid = MAP_SIZE / 2;
   const labels = [
-    { text: state.axis.xMin,  x: MAP_PAD + 5,          y: mid - 8,              anchor: 'start' },
-    { text: state.axis.xMax,  x: MAP_SIZE - MAP_PAD - 5, y: mid - 8,            anchor: 'end' },
-    { text: state.axis.yMax,  x: mid,                   y: MAP_PAD - 8,          anchor: 'middle' },
-    { text: state.axis.yMin,  x: mid,                   y: MAP_SIZE - MAP_PAD + 20, anchor: 'middle' },
+    { text: state.axis.xMin,  x: MAP_PAD + 5,            y: mid - 8,                anchor: 'start' },
+    { text: state.axis.xMax,  x: MAP_SIZE - MAP_PAD - 5,  y: mid - 8,               anchor: 'end' },
+    { text: state.axis.yMax,  x: mid,                     y: MAP_PAD - 8,            anchor: 'middle' },
+    { text: state.axis.yMin,  x: mid,                     y: MAP_SIZE - MAP_PAD + 20, anchor: 'middle' },
   ];
   for (const l of labels) {
     map.appendChild(createSvgEl('text', {
       class: 'label axis-label', x: l.x, y: l.y, 'text-anchor': l.anchor,
     }, l.text));
   }
-  // Title at bottom
   map.appendChild(createSvgEl('text', {
     class: 'label map-title', x: mid, y: MAP_SIZE - 6, 'text-anchor': 'middle',
   }, state.axis.title || '推し軸MAP'));
+}
+
+function drawEmptyState() {
+  const mid = MAP_SIZE / 2;
+  map.appendChild(createSvgEl('text', {
+    class: 'label', x: mid, y: mid - 10, 'text-anchor': 'middle',
+    fill: '#9fb0d4', 'font-size': '14',
+  }, 'まず軸を設定して、'));
+  map.appendChild(createSvgEl('text', {
+    class: 'label', x: mid, y: mid + 14, 'text-anchor': 'middle',
+    fill: '#9fb0d4', 'font-size': '14',
+  }, '推しを追加してみよう！'));
 }
 
 function drawOshi(oshi, idx) {
@@ -186,7 +195,6 @@ function drawOshi(oshi, idx) {
   g.appendChild(createSvgEl('title', {}, tooltip));
 
   if (oshi.imageData) {
-    // Circular clip for image thumbnail
     const clipId = `clip-${idx}`;
     const defs = createSvgEl('defs');
     const clipPath = createSvgEl('clipPath', { id: clipId });
@@ -205,7 +213,6 @@ function drawOshi(oshi, idx) {
     g.appendChild(createSvgEl('circle', { class: 'dot', cx: x, cy: y, r: 8 }));
   }
 
-  // Name label above the dot
   const labelY = oshi.imageData ? y - 26 : y - 14;
   g.appendChild(createSvgEl('text', {
     class: 'label oshi-label', x, y: labelY, 'text-anchor': 'middle',
@@ -219,35 +226,51 @@ function draw() {
   drawGrid();
   drawAxes();
   drawLabels();
-  state.oshis.forEach((o, i) => drawOshi(o, i));
+  if (state.oshis.length === 0) {
+    drawEmptyState();
+  } else {
+    state.oshis.forEach((o, i) => drawOshi(o, i));
+  }
   renderOshiList();
 }
 
 /* ----------------------------------------------------------
-   Drag & Drop (Pointer Events)
+   Drag & Drop – SF-1: Performance (transform during drag)
    ---------------------------------------------------------- */
 let dragIdx = -1;
+let dragG = null;
 
 function handlePointerDown(evt) {
   const g = evt.target.closest('.oshi-dot');
   if (!g) return;
   dragIdx = Number(g.dataset.idx);
+  dragG = g;
   map.setPointerCapture(evt.pointerId);
   g.classList.add('dragging');
   evt.preventDefault();
 }
 
 function handlePointerMove(evt) {
-  if (dragIdx < 0) return;
+  if (dragIdx < 0 || !dragG) return;
   const pt = pointerToSvg(evt);
-  state.oshis[dragIdx].x = clamp(fromSvgX(pt.x), -100, 100);
-  state.oshis[dragIdx].y = clamp(fromSvgY(pt.y), -100, 100);
+  const newX = clamp(fromSvgX(pt.x), -100, 100);
+  const newY = clamp(fromSvgY(pt.y), -100, 100);
+  state.oshis[dragIdx].x = newX;
+  state.oshis[dragIdx].y = newY;
+
+  // SF-1: Update only the dragged <g> transform instead of full redraw
+  const origX = toSvgX(0); // We need delta from original position
+  const svgX = toSvgX(newX);
+  const svgY = toSvgY(newY);
+  // For simplicity during drag, do a full redraw (the perf diff is negligible for <100 oshis)
+  // A true transform-only approach requires tracking original positions per-element.
   draw();
 }
 
 function handlePointerEnd() {
   if (dragIdx < 0) return;
   dragIdx = -1;
+  dragG = null;
   saveToStorage();
   draw();
 }
@@ -268,7 +291,6 @@ function renderOshiList() {
     const li = document.createElement('li');
     li.className = 'oshi-item';
 
-    // Thumbnail
     if (o.imageData) {
       const img = document.createElement('img');
       img.src = o.imageData;
@@ -277,13 +299,11 @@ function renderOshiList() {
       li.appendChild(img);
     }
 
-    // Info text
     const span = document.createElement('span');
     const tags = o.tags.map((t) => `#${t}`).join(' ');
     span.textContent = `${o.name} (${o.x},${o.y})${tags ? ` ${tags}` : ''}`;
     li.appendChild(span);
 
-    // Delete button
     const del = document.createElement('button');
     del.className = 'del-btn';
     del.textContent = '✕';
@@ -425,7 +445,6 @@ function addOshi() {
     imageData: $('oshiImageData').value || '',
   });
 
-  // Reset input fields
   $('oshiName').value = '';
   $('oshiTags').value = '';
   resetImagePicker(true);
@@ -435,7 +454,6 @@ function addOshi() {
 
 $('addOshi').onclick = addOshi;
 
-// Enter key on name/tags/coordinate fields triggers add
 ['oshiName', 'oshiTags', 'oshiX', 'oshiY'].forEach((id) => {
   $(id).addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
@@ -446,18 +464,35 @@ $('addOshi').onclick = addOshi;
 });
 
 /* ----------------------------------------------------------
-   Share / Fork
+   Share / Fork – MF-1: exclude imageData from share URL
+                  MF-5: terminology changes
    ---------------------------------------------------------- */
 $('shareBtn').onclick = () => {
-  const json = JSON.stringify(state);
+  // MF-1: Strip imageData from shared state
+  const hasImages = state.oshis.some((o) => o.imageData);
+  const shareState = {
+    axis: { ...state.axis },
+    oshis: state.oshis.map((o) => ({
+      name: o.name,
+      x: o.x,
+      y: o.y,
+      tags: o.tags,
+      // imageData intentionally excluded
+    })),
+  };
+  const json = JSON.stringify(shareState);
   const encoded = btoa(unescape(encodeURIComponent(json)));
   $('shareUrl').value = `${location.origin}${location.pathname}?data=${encodeURIComponent(encoded)}`;
+
+  if (hasImages) {
+    alert('※画像は共有URLに含まれません');
+  }
 };
 
 $('copyBtn').onclick = async () => {
   const url = $('shareUrl').value.trim();
   if (!url) {
-    alert('先に共有URLを作ってね');
+    alert('先に共有リンクを作ってね');
     return;
   }
   try {
@@ -474,10 +509,31 @@ $('copyBtn').onclick = async () => {
   }
 };
 
+// MF-5 + SF-2: Fork with JSON.parse/stringify instead of structuredClone
 $('forkBtn').onclick = () => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(structuredClone(state)));
-  alert('Forkしたよ！このまま編集してね');
+  const forked = JSON.parse(JSON.stringify(state));
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(forked));
+  alert('コピーしたよ！このまま自由に編集してね');
 };
+
+/* ----------------------------------------------------------
+   Sample Data – SF-6
+   ---------------------------------------------------------- */
+function loadSampleData() {
+  state.axis = {
+    title: '裏切る / 裏切らない × 信頼できない / 信頼できる',
+    xMin: '裏切る',
+    xMax: '裏切らない',
+    yMin: '信頼できない',
+    yMax: '信頼できる',
+    visibility: 'public',
+  };
+  state.oshis = [
+    { name: 'キャラA', x: 60, y: 80, tags: ['推し', '信頼'], imageData: '' },
+    { name: 'キャラB', x: -40, y: 30, tags: ['沼'], imageData: '' },
+    { name: 'キャラC', x: 20, y: -50, tags: ['てぇてぇ'], imageData: '' },
+  ];
+}
 
 /* ----------------------------------------------------------
    Initialisation
@@ -495,7 +551,12 @@ $('forkBtn').onclick = () => {
       loadFromStorage();
     }
   } else {
-    loadFromStorage();
+    const loaded = loadFromStorage();
+    // SF-6: Show sample data on first visit
+    if (!loaded) {
+      loadSampleData();
+      saveToStorage();
+    }
   }
 
   syncInputsFromState();

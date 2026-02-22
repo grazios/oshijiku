@@ -127,6 +127,11 @@ textarea {
   font-size: 1rem;
 }
 
+input::placeholder,
+textarea::placeholder {
+  color: #8a9fc0;
+}
+
 input:focus,
 select:focus,
 textarea:focus {
@@ -281,7 +286,9 @@ li {
 
 .del-btn {
   width: auto;
-  padding: 4px 10px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 10px 12px;
   border-radius: var(--radius-sm);
   background: #1a1024;
   border: 1px solid #5a3a6a;
@@ -313,7 +320,7 @@ li {
 }
 
 .axis-label {
-  fill: #8a9fc0;
+  fill: #a0b5d8;
   font-size: 12px;
 }
 
