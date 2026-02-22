@@ -3,21 +3,15 @@
    Vanilla JS / No framework / Static site
    ============================================================ */
 
-'use strict';
-
-// --- Import core (for browsers via importmap or bundler; fallback inline for non-module) ---
-// Note: We inline the core functions here for browser compatibility (no build step).
-// The canonical source is core.js (ESM), tested via vitest.
-// Keep these in sync with core.js.
+import {
+  MAP_SIZE, MAP_PAD, MAP_RANGE, IMAGE_DATA_RE,
+  toSvgX, toSvgY, fromSvgX, fromSvgY, clamp, sanitizeAndLoad,
+} from './core.js';
 
 const MAX_IMAGE_BYTES = 512 * 1024;
 const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const SVG_NS = 'http://www.w3.org/2000/svg';
-const MAP_SIZE = 600;
-const MAP_PAD = 50;
-const MAP_RANGE = MAP_SIZE - MAP_PAD * 2;
 const STORAGE_KEY = 'oshijiku_state';
-const IMAGE_DATA_RE = /^data:image\/(jpeg|png|webp);base64,/i;
 
 /* ----------------------------------------------------------
    State
@@ -43,38 +37,21 @@ function createSvgEl(tag, attrs = {}, textContent = '') {
 }
 
 /* ----------------------------------------------------------
-   Coordinate Conversion (synced with core.js)
+   Coordinate Conversion (SVG point)
    ---------------------------------------------------------- */
-function toSvgX(v) {
-  return MAP_SIZE / 2 + (Number(v) / 100) * (MAP_RANGE / 2);
-}
-
-function toSvgY(v) {
-  return MAP_SIZE / 2 - (Number(v) / 100) * (MAP_RANGE / 2);
-}
-
-function fromSvgX(px) {
-  return Math.round(((px - MAP_SIZE / 2) / (MAP_RANGE / 2)) * 100);
-}
-
-function fromSvgY(px) {
-  return Math.round(((MAP_SIZE / 2 - px) / (MAP_RANGE / 2)) * 100);
-}
-
-function clamp(v, lo, hi) {
-  return Math.max(lo, Math.min(hi, v));
-}
-
 let _svgPoint = null;
 function pointerToSvg(evt) {
   if (!_svgPoint) _svgPoint = map.createSVGPoint();
   _svgPoint.x = evt.clientX;
   _svgPoint.y = evt.clientY;
-  return _svgPoint.matrixTransform(map.getScreenCTM().inverse());
+  // SF-1: getScreenCTM() null check
+  const ctm = map.getScreenCTM();
+  if (!ctm) return null;
+  return _svgPoint.matrixTransform(ctm.inverse());
 }
 
 /* ----------------------------------------------------------
-   Persistence (localStorage) – SF-3: try-catch
+   Persistence (localStorage)
    ---------------------------------------------------------- */
 function saveToStorage() {
   try {
@@ -85,47 +62,17 @@ function saveToStorage() {
   }
 }
 
-function sanitizeAndLoad(parsed) {
-  if (!parsed || typeof parsed !== 'object') return;
-
-  if (parsed.axis && typeof parsed.axis === 'object') {
-    const a = parsed.axis;
-    state.axis = {
-      title:      String(a.title ?? ''),
-      xMin:       String(a.xMin ?? '左'),
-      xMax:       String(a.xMax ?? '右'),
-      yMin:       String(a.yMin ?? '下'),
-      yMax:       String(a.yMax ?? '上'),
-      visibility: a.visibility === 'url' ? 'url' : 'public',
-    };
-  }
-
-  if (Array.isArray(parsed.oshis)) {
-    state.oshis = parsed.oshis
-      .map((o) => {
-        if (!o || typeof o !== 'object') return null;
-        const name = String(o.name ?? '').trim();
-        if (!name) return null;
-
-        const rawX = Number(o.x ?? 0);
-        const rawY = Number(o.y ?? 0);
-        return {
-          name,
-          x: clamp(Number.isFinite(rawX) ? rawX : 0, -100, 100),
-          y: clamp(Number.isFinite(rawY) ? rawY : 0, -100, 100),
-          tags: Array.isArray(o.tags) ? o.tags.map(String).filter(Boolean) : [],
-          imageData: typeof o.imageData === 'string' && IMAGE_DATA_RE.test(o.imageData) ? o.imageData : '',
-        };
-      })
-      .filter(Boolean);
-  }
+function applySanitized(parsed) {
+  const result = sanitizeAndLoad(parsed, state);
+  Object.assign(state.axis, result.axis);
+  state.oshis = result.oshis;
 }
 
 function loadFromStorage() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return false;
-    sanitizeAndLoad(JSON.parse(raw));
+    applySanitized(JSON.parse(raw));
     return true;
   } catch (e) {
     console.warn('Failed to load state from localStorage:', e);
@@ -235,7 +182,7 @@ function draw() {
 }
 
 /* ----------------------------------------------------------
-   Drag & Drop – SF-1: Performance (transform during drag)
+   Drag & Drop
    ---------------------------------------------------------- */
 let dragIdx = -1;
 let dragG = null;
@@ -258,20 +205,23 @@ function handlePointerDown(evt) {
 function handlePointerMove(evt) {
   if (dragIdx < 0 || !dragG) return;
   const pt = pointerToSvg(evt);
+  if (!pt) return; // SF-1: getScreenCTM() returned null
   const newX = clamp(fromSvgX(pt.x), -100, 100);
   const newY = clamp(fromSvgY(pt.y), -100, 100);
   state.oshis[dragIdx].x = newX;
   state.oshis[dragIdx].y = newY;
 
-  // SF-1: Transform-only approach – no draw() during drag
+  // Transform-only approach – no draw() during drag
   const dx = toSvgX(newX) - dragOrigSvgX;
   const dy = toSvgY(newY) - dragOrigSvgY;
   dragG.setAttribute('transform', `translate(${dx},${dy})`);
-  renderOshiList();
+  // MF-1: renderOshiList() removed – list updates on pointerup via draw()
 }
 
 function handlePointerEnd() {
   if (dragIdx < 0) return;
+  // SF-2: explicitly remove dragging class before draw()
+  if (dragG) dragG.classList.remove('dragging');
   dragIdx = -1;
   dragG = null;
   saveToStorage();
@@ -467,11 +417,9 @@ $('addOshi').onclick = addOshi;
 });
 
 /* ----------------------------------------------------------
-   Share / Fork – MF-1: exclude imageData from share URL
-                  MF-5: terminology changes
+   Share / Fork
    ---------------------------------------------------------- */
 $('shareBtn').onclick = () => {
-  // MF-1: Strip imageData from shared state
   const hasImages = state.oshis.some((o) => o.imageData);
   const shareState = {
     axis: { ...state.axis },
@@ -480,7 +428,6 @@ $('shareBtn').onclick = () => {
       x: o.x,
       y: o.y,
       tags: o.tags,
-      // imageData intentionally excluded
     })),
   };
   const json = JSON.stringify(shareState);
@@ -512,7 +459,6 @@ $('copyBtn').onclick = async () => {
   }
 };
 
-// MF-5 + SF-2: Fork with JSON.parse/stringify instead of structuredClone
 $('forkBtn').onclick = () => {
   const forked = JSON.parse(JSON.stringify(state));
   localStorage.setItem(STORAGE_KEY, JSON.stringify(forked));
@@ -520,7 +466,7 @@ $('forkBtn').onclick = () => {
 };
 
 /* ----------------------------------------------------------
-   Sample Data – SF-6
+   Sample Data
    ---------------------------------------------------------- */
 function loadSampleData() {
   state.axis = {
@@ -548,14 +494,13 @@ function loadSampleData() {
   if (data) {
     try {
       const json = decodeURIComponent(escape(atob(data)));
-      sanitizeAndLoad(JSON.parse(json));
+      applySanitized(JSON.parse(json));
     } catch (e) {
       console.warn('Failed to load state from URL:', e);
       loadFromStorage();
     }
   } else {
     const loaded = loadFromStorage();
-    // SF-6: Show sample data on first visit
     if (!loaded) {
       loadSampleData();
       saveToStorage();
