@@ -82,8 +82,15 @@ function draw() {
   state.oshis.forEach(o => {
     const x = toCoord(o.x);
     const y = toCoord(-o.y);
-    map.appendChild(createSvgEl('circle', { class: 'dot', cx: x, cy: y, r: 8 }));
-    map.appendChild(createSvgEl('text', { class: 'label', x: x + 10, y: y - 10 }, o.name));
+    const tags = o.tags.length ? `\nタグ: ${o.tags.map(t => '#' + t).join(' ')}` : '';
+    const tip = `${o.name} (${o.x}, ${o.y})${tags}`;
+
+    const g = createSvgEl('g', { class: 'oshi-dot' });
+    g.appendChild(createSvgEl('title', {}, tip));
+    g.appendChild(createSvgEl('circle', { class: 'dot-hover', cx: x, cy: y, r: 18 }));
+    g.appendChild(createSvgEl('circle', { class: 'dot', cx: x, cy: y, r: 8 }));
+    g.appendChild(createSvgEl('text', { class: 'label', x: x + 12, y: y - 12 }, o.name));
+    map.appendChild(g);
   });
 
   renderOshiList();

@@ -58,7 +58,9 @@ li{margin:6px 0;color:#d6e1f7}
 .del-btn{width:auto;padding:4px 10px;border-radius:8px;background:#1a1024;border:1px solid #5a3a6a;color:#ff9da1;font-size:.85rem;flex-shrink:0;cursor:pointer}
 .del-btn:hover{background:#2d1232;border-color:#ff9da1}
 .oshi-thumb{width:42px;height:42px;border-radius:8px;object-fit:cover;border:1px solid #3b4d75;flex-shrink:0}
-.dot{fill:#6ee7ff;stroke:#042b3a;stroke-width:2}
+.dot{fill:#6ee7ff;stroke:#042b3a;stroke-width:2;transition:r .15s ease}
+.dot-hover{fill:transparent;cursor:pointer}
+.oshi-dot:hover .dot{r:11;fill:#a4f0ff;filter:drop-shadow(0 0 6px #6ee7ff88)}
 .axis{stroke:#3d4a67;stroke-width:2}
 .label{fill:#cdd8eb;font-size:13px}
 .map-title{fill:#9fb0d4;font-size:11px}
