@@ -27,6 +27,7 @@
       <div id="mapWrap" role="img" aria-label="推しの2次元マップ">
         <svg id="map" viewBox="0 0 600 600" aria-hidden="true"></svg>
       </div>
+      <p id="mapError" class="error-msg hidden" role="alert" aria-live="assertive"></p>
       <p class="hint">💡 ドラッグで推しの位置を調整 ／ 軸ラベルをダブルクリックで編集</p>
       <button id="addOshiBtn" class="add-oshi-btn" aria-label="推しを追加">＋ 推しを追加</button>
       <div class="actions actions--three">
@@ -53,6 +54,7 @@
       <h3>推しを追加</h3>
       <label for="dlgOshiName">名前（必須）</label>
       <input id="dlgOshiName" placeholder="推しの名前" required />
+      <p id="dlgNameError" class="error-msg" role="alert" aria-live="assertive"></p>
       <label for="dlgOshiImage">画像（任意・512KBまで）</label>
       <div class="image-pick-row">
         <button type="button" id="dlgImageBtn" class="image-pick-btn">📷 画像を選択</button>

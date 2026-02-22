@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   clamp, toSvgX, toSvgY, fromSvgX, fromSvgY, sanitizeAndLoad,
   IMAGE_DATA_RE, parseTags, validateOshiInput, buildSharePayload, validateVisibility,
+  validateImageFile, resolveAxisDefaults,
 } from './core.js';
 
 describe('clamp', () => {
@@ -293,4 +294,69 @@ describe('validateVisibility', () => {
   it('rejects invalid', () => { expect(validateVisibility('invalid')).toBe('public'); });
   it('rejects undefined', () => { expect(validateVisibility(undefined)).toBe('public'); });
   it('rejects null', () => { expect(validateVisibility(null)).toBe('public'); });
+});
+
+/* ----------------------------------------------------------
+   validateImageFile
+   ---------------------------------------------------------- */
+describe('validateImageFile', () => {
+  it('accepts valid jpeg', () => {
+    expect(validateImageFile({ type: 'image/jpeg', size: 1000 })).toEqual({ valid: true });
+  });
+  it('accepts valid png', () => {
+    expect(validateImageFile({ type: 'image/png', size: 512 * 1024 })).toEqual({ valid: true });
+  });
+  it('accepts valid webp', () => {
+    expect(validateImageFile({ type: 'image/webp', size: 100 })).toEqual({ valid: true });
+  });
+  it('rejects gif', () => {
+    const r = validateImageFile({ type: 'image/gif', size: 100 });
+    expect(r.valid).toBe(false);
+    expect(r.error).toContain('jpg');
+  });
+  it('rejects too large file', () => {
+    const r = validateImageFile({ type: 'image/png', size: 512 * 1024 + 1 });
+    expect(r.valid).toBe(false);
+    expect(r.error).toContain('512KB');
+  });
+  it('rejects null input', () => {
+    expect(validateImageFile(null).valid).toBe(false);
+  });
+  it('rejects undefined input', () => {
+    expect(validateImageFile(undefined).valid).toBe(false);
+  });
+});
+
+/* ----------------------------------------------------------
+   resolveAxisDefaults
+   ---------------------------------------------------------- */
+describe('resolveAxisDefaults', () => {
+  it('fills all empty fields with defaults', () => {
+    const r = resolveAxisDefaults({ xMin: '', xMax: '', yMin: '', yMax: '' });
+    expect(r).toEqual({ xMin: '左', xMax: '右', yMin: '下', yMax: '上' });
+  });
+  it('preserves non-empty fields', () => {
+    const r = resolveAxisDefaults({ xMin: 'L', xMax: 'R', yMin: 'D', yMax: 'U' });
+    expect(r).toEqual({ xMin: 'L', xMax: 'R', yMin: 'D', yMax: 'U' });
+  });
+  it('fills only empty fields', () => {
+    const r = resolveAxisDefaults({ xMin: 'L', xMax: '', yMin: 'D', yMax: '' });
+    expect(r.xMin).toBe('L');
+    expect(r.xMax).toBe('右');
+    expect(r.yMin).toBe('D');
+    expect(r.yMax).toBe('上');
+  });
+  it('treats whitespace-only as empty', () => {
+    const r = resolveAxisDefaults({ xMin: '  ', xMax: 'R', yMin: '', yMax: 'U' });
+    expect(r.xMin).toBe('左');
+  });
+  it('does not mutate input', () => {
+    const input = { xMin: '', xMax: '', yMin: '', yMax: '' };
+    resolveAxisDefaults(input);
+    expect(input.xMin).toBe('');
+  });
+  it('preserves extra fields', () => {
+    const r = resolveAxisDefaults({ xMin: '', xMax: '', yMin: '', yMax: '', title: 'T' });
+    expect(r.title).toBe('T');
+  });
 });

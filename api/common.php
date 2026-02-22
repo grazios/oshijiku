@@ -18,10 +18,13 @@ function getDb(): PDO {
 function checkOrigin(): void {
     $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
     $allowed = ['https://oshijiku.com'];
-    // localhost dev
-    if (preg_match('#^https?://localhost(:\d+)?$#', $origin)) {
-        $allowed[] = $origin;
+
+    // MF-3: Block POST with empty origin (CSRF protection)
+    if (empty($origin) && $_SERVER['REQUEST_METHOD'] !== 'GET') {
+        http_response_code(403);
+        exit;
     }
+
     if ($origin && !in_array($origin, $allowed, true)) {
         jsonResponse(['ok' => false, 'error' => 'Forbidden'], 403);
         exit;

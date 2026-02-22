@@ -9,6 +9,25 @@ const IMAGE_DATA_RE = /^data:image\/(jpeg|png|webp);base64,/i;
 
 export { MAP_SIZE, MAP_PAD, MAP_RANGE, IMAGE_DATA_RE };
 
+const MAX_IMAGE_BYTES = 512 * 1024;
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
+export function validateImageFile(file) {
+  if (!file || typeof file !== 'object') return { valid: false, error: '画像ファイルが不正です' };
+  if (!ALLOWED_IMAGE_TYPES.includes(file.type)) return { valid: false, error: '画像は jpg / png / webp のみ対応です' };
+  if (file.size > MAX_IMAGE_BYTES) return { valid: false, error: '画像サイズは 512KB 以下にしてください' };
+  return { valid: true };
+}
+
+export function resolveAxisDefaults(axis) {
+  const defaults = { xMin: '左', xMax: '右', yMin: '下', yMax: '上' };
+  const result = { ...axis };
+  for (const [key, def] of Object.entries(defaults)) {
+    if (!result[key] || !String(result[key]).trim()) result[key] = def;
+  }
+  return result;
+}
+
 export function toSvgX(v) {
   return MAP_SIZE / 2 + (Number(v) / 100) * (MAP_RANGE / 2);
 }

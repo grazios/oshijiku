@@ -7,14 +7,17 @@ import {
   MAP_SIZE, MAP_PAD, MAP_RANGE, IMAGE_DATA_RE,
   toSvgX, toSvgY, fromSvgX, fromSvgY, clamp, sanitizeAndLoad,
   parseTags, validateOshiInput, buildSharePayload, validateVisibility,
+  validateImageFile, resolveAxisDefaults,
 } from './core.js';
 
 const MAX_IMAGE_BYTES = 512 * 1024;
 const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const MAX_OSHIS = 50;
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const STORAGE_KEY = 'oshijiku_state';
 
 let currentShareId = null;
+let isViewMode = false;
 
 /* ----------------------------------------------------------
    State
@@ -23,6 +26,17 @@ const state = {
   axis: { title: '', xMin: '左', xMax: '右', yMin: '下', yMax: '上', visibility: 'public' },
   oshis: [],
 };
+
+/* ----------------------------------------------------------
+   Inline Error Helpers
+   ---------------------------------------------------------- */
+function showMapError(msg) {
+  const el = $('mapError');
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.remove('hidden');
+  setTimeout(() => { el.textContent = ''; el.classList.add('hidden'); }, 5000);
+}
 
 /* ----------------------------------------------------------
    DOM Helpers
@@ -60,7 +74,7 @@ function saveToStorage() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch (e) {
-    alert('保存に失敗しました。ブラウザのストレージ容量が不足している可能性があります。');
+    showMapError('保存に失敗しました。ブラウザのストレージ容量が不足している可能性があります。');
     console.warn('localStorage save failed:', e);
   }
 }
@@ -228,8 +242,10 @@ function startInlineEdit(svgTextEl) {
     if (field === 'title') {
       state.axis.title = val;
     } else {
-      state.axis[field] = val || (field.startsWith('x') ? (field === 'xMin' ? '左' : '右') : (field === 'yMin' ? '下' : '上'));
+      state.axis[field] = val;
     }
+    const resolved = resolveAxisDefaults(state.axis);
+    Object.assign(state.axis, resolved);
     saveToStorage();
     input.remove();
     draw();
@@ -247,6 +263,7 @@ function startInlineEdit(svgTextEl) {
 }
 
 map.addEventListener('dblclick', (evt) => {
+  if (isViewMode) return;
   const target = evt.target.closest('.editable-label');
   if (target) {
     evt.preventDefault();
@@ -263,6 +280,7 @@ let dragOrigSvgX = 0;
 let dragOrigSvgY = 0;
 
 function handlePointerDown(evt) {
+  if (isViewMode) return;
   const g = evt.target.closest('.oshi-dot');
   if (!g) return;
   dragIdx = Number(g.dataset.idx);
@@ -324,21 +342,23 @@ function renderOshiList() {
 
     const span = document.createElement('span');
     const tags = o.tags.map((t) => `#${t}`).join(' ');
-    span.textContent = `${o.name} (${o.x},${o.y})${tags ? ` ${tags}` : ''}`;
+    span.textContent = `${o.name}${tags ? ` ${tags}` : ''}`;
     li.appendChild(span);
 
-    const del = document.createElement('button');
-    del.className = 'del-btn';
-    del.textContent = '✕';
-    del.title = `${o.name}を削除`;
-    del.setAttribute('aria-label', `${o.name}を削除`);
-    del.onclick = () => {
-      if (!confirm(`「${o.name}」を削除しますか？`)) return;
-      state.oshis.splice(i, 1);
-      saveToStorage();
-      draw();
-    };
-    li.appendChild(del);
+    if (!isViewMode) {
+      const del = document.createElement('button');
+      del.className = 'del-btn';
+      del.textContent = '✕';
+      del.title = `${o.name}を削除`;
+      del.setAttribute('aria-label', `${o.name}を削除`);
+      del.onclick = () => {
+        if (!confirm(`「${o.name}」を削除しますか？`)) return;
+        state.oshis.splice(i, 1);
+        saveToStorage();
+        draw();
+      };
+      li.appendChild(del);
+    }
 
     list.appendChild(li);
   });
@@ -374,18 +394,12 @@ $('dlgOshiImage').addEventListener('change', () => {
     errEl.textContent = '';
     return;
   }
-  if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
+  const validation = validateImageFile({ type: file.type, size: file.size });
+  if (!validation.valid) {
     $('dlgOshiImage').value = '';
     $('dlgOshiImageData').value = '';
     preview.classList.add('hidden');
-    errEl.textContent = '画像は jpg / png / webp のみ対応です';
-    return;
-  }
-  if (file.size > MAX_IMAGE_BYTES) {
-    $('dlgOshiImage').value = '';
-    $('dlgOshiImageData').value = '';
-    preview.classList.add('hidden');
-    errEl.textContent = '画像サイズは 512KB 以下にしてください';
+    errEl.textContent = validation.error;
     return;
   }
 
@@ -408,8 +422,15 @@ $('dlgOshiImage').addEventListener('change', () => {
 
 $('dlgAddBtn').onclick = () => {
   const name = $('dlgOshiName').value.trim();
+  const dlgError = $('dlgNameError');
   if (!name) {
-    alert('名前入れて〜');
+    dlgError.textContent = '名前入れて〜';
+    return;
+  }
+  dlgError.textContent = '';
+
+  if (state.oshis.length >= MAX_OSHIS) {
+    dlgError.textContent = `推しは最大${MAX_OSHIS}人までです`;
     return;
   }
 
@@ -456,7 +477,7 @@ $('shareBtn').onclick = async () => {
     });
     const json = await res.json();
     if (!json.ok) {
-      alert('共有に失敗しました: ' + (json.error || '不明なエラー'));
+      showMapError('共有に失敗しました: ' + (json.error || '不明なエラー'));
       return;
     }
     $('shareUrl').value = json.url;
@@ -473,11 +494,11 @@ $('shareBtn').onclick = async () => {
     setTimeout(() => { $('shareMsg').textContent = ''; }, 5000);
 
     if (hasImages) {
-      alert('※画像は共有リンクに含まれません');
+      $('shareMsg').textContent += ' ※画像は共有リンクに含まれません';
     }
   } catch (e) {
     console.error('Share failed:', e);
-    alert('共有に失敗しました。通信エラーです。');
+    showMapError('共有に失敗しました。通信エラーです。');
   }
 };
 
@@ -500,14 +521,15 @@ $('copyBtn').onclick = async () => {
       btn.textContent = 'URLをコピー';
     }, 1200);
   } catch {
-    alert('コピーに失敗したよ');
+    showMapError('コピーに失敗しました');
   }
 };
 
 $('forkBtn').onclick = () => {
   const forked = JSON.parse(JSON.stringify(state));
   localStorage.setItem(STORAGE_KEY, JSON.stringify(forked));
-  alert('コピーしたよ！このまま自由に編集してね');
+  $('shareMsg').textContent = 'コピーしたよ！このまま自由に編集してね';
+  setTimeout(() => { $('shareMsg').textContent = ''; }, 3000);
 };
 
 /* ----------------------------------------------------------
@@ -528,7 +550,7 @@ $('deleteShareBtn').onclick = async () => {
   const keys = JSON.parse(localStorage.getItem('oshijiku_delete_keys') || '{}');
   const deleteKey = keys[currentShareId];
   if (!deleteKey) {
-    alert('削除キーが見つかりません');
+    showMapError('削除キーが見つかりません');
     return;
   }
   if (!confirm('共有リンクを削除しますか？この操作は取り消せません。')) return;
@@ -550,11 +572,11 @@ $('deleteShareBtn').onclick = async () => {
       $('shareMsg').textContent = '共有を削除しました';
       setTimeout(() => { $('shareMsg').textContent = ''; }, 3000);
     } else {
-      alert('削除に失敗しました: ' + (json.error || '不明なエラー'));
+      showMapError('削除に失敗しました: ' + (json.error || '不明なエラー'));
     }
   } catch (e) {
     console.error('Delete failed:', e);
-    alert('削除に失敗しました。通信エラーです。');
+    showMapError('削除に失敗しました。通信エラーです。');
   }
 };
 
@@ -586,22 +608,24 @@ function loadSampleData() {
   const data = params.get('data');
 
   if (shareParam) {
+    isViewMode = true;
     try {
       const res = await fetch(`/api/load.php?id=${encodeURIComponent(shareParam)}`);
       const json = await res.json();
       if (json.ok && json.data) {
         applySanitized(json.data);
         currentShareId = shareParam;
-        showDeleteBtn(shareParam);
       } else {
         console.warn('Failed to load shared map:', json.error);
-        alert('共有マップが見つかりませんでした');
+        isViewMode = false;
         loadFromStorage();
+        setTimeout(() => showMapError('共有マップが見つかりませんでした'), 0);
       }
     } catch (e) {
       console.warn('Failed to fetch shared map:', e);
-      alert('共有マップの読み込みに失敗しました');
+      isViewMode = false;
       loadFromStorage();
+      setTimeout(() => showMapError('共有マップの読み込みに失敗しました'), 0);
     }
   } else if (data) {
     try {
@@ -621,4 +645,37 @@ function loadSampleData() {
 
   draw();
   updateShareButtons();
+
+  // MF-1: View mode — hide edit UI, show fork button
+  if (isViewMode) {
+    $('addOshiBtn').classList.add('hidden');
+    $('shareBtn').parentElement.classList.add('hidden'); // actions--three
+    $('shareUrl').classList.add('hidden');
+    $('deleteShareBtn').classList.add('hidden');
+    document.querySelectorAll('.del-btn').forEach(b => b.classList.add('hidden'));
+    document.querySelector('.hint')?.classList.add('hidden');
+
+    const forkViewBtn = document.createElement('button');
+    forkViewBtn.className = 'add-oshi-btn';
+    forkViewBtn.textContent = 'コピーして自分用に作る';
+    forkViewBtn.onclick = () => {
+      const forked = JSON.parse(JSON.stringify(state));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(forked));
+      location.href = '/';
+    };
+    $('mapWrap').after(forkViewBtn);
+  }
+
+  // MF-2: Data reset button
+  if (!isViewMode) {
+    const resetBtn = document.createElement('button');
+    resetBtn.className = 'reset-btn';
+    resetBtn.textContent = 'データをリセット';
+    resetBtn.onclick = () => {
+      if (!confirm('すべてのデータを削除しますか？')) return;
+      localStorage.clear();
+      location.reload();
+    };
+    $('oshiList').after(resetBtn);
+  }
 })();
